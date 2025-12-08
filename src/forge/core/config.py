@@ -39,6 +39,12 @@ class KnowledgeForgeConfig(BaseModel):
     search_method: str = "hybrid"  # keyword, semantic, or hybrid
 
 
+class CompoundEngineeringConfig(BaseModel):
+    """Compound Engineering integration configuration"""
+    plugin_path: Optional[str] = None  # Custom path to CE plugin (defaults to ../compound-engineering)
+    enabled: bool = True  # Use CE-style planning
+
+
 class TestingConfig(BaseModel):
     """Testing configuration"""
     use_docker: bool = True
@@ -51,6 +57,7 @@ class ForgeConfig(BaseModel):
     generator: GeneratorConfig = Field(default_factory=GeneratorConfig)
     git: GitConfig = Field(default_factory=GitConfig)
     knowledgeforge: KnowledgeForgeConfig = Field(default_factory=KnowledgeForgeConfig)
+    compound_engineering: CompoundEngineeringConfig = Field(default_factory=CompoundEngineeringConfig)
     testing: TestingConfig = Field(default_factory=TestingConfig)
 
     # Database paths
