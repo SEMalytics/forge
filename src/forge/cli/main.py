@@ -287,20 +287,66 @@ def chat(project_id):
 
 
 @cli.command()
-@click.argument('description')
+@click.argument('description', required=False)
 @click.option('--tech-stack', '-t', multiple=True, help="Technologies to use (can specify multiple)")
-@click.option('--project-id', '-p', help="Save decomposition to project")
+@click.option('--project-id', '-p', help="Use existing project (loads planning summary)")
 @click.option('--save', '-s', is_flag=True, help="Save plan to file")
 @click.option('--visualize', '-v', is_flag=True, help="Show dependency graph visualization")
 def decompose(description, tech_stack, project_id, save, visualize):
-    """Generate project task plan from description"""
+    """Generate project task plan from description or existing project"""
     from forge.knowledgeforge.pattern_store import PatternStore
     from forge.layers.decomposition import TaskDecomposer
+    from forge.core.state_manager import StateManager
     from rich.table import Table
     from rich.panel import Panel
+    import json
 
     try:
         console.print("\n[bold blue]⚒ Forge Task Decomposition[/bold blue]\n")
+
+        # If project_id provided without description, load from planning summary
+        if project_id and not description:
+            state = StateManager()
+            project = state.get_project(project_id)
+
+            if not project:
+                print_error(f"Project not found: {project_id}")
+                sys.exit(1)
+
+            # Extract description and tech stack from planning summary
+            planning_summary = project.metadata.get('planning_summary', {})
+
+            if not planning_summary:
+                print_error(f"No planning summary found for project: {project_id}")
+                print_info("Run 'forge chat' to create a planning session first")
+                sys.exit(1)
+
+            # Build comprehensive description from planning summary
+            desc_parts = [planning_summary.get('description', '')]
+
+            if planning_summary.get('requirements'):
+                desc_parts.append("\nRequirements:")
+                desc_parts.extend([f"- {req}" for req in planning_summary['requirements']])
+
+            if planning_summary.get('features'):
+                desc_parts.append("\nFeatures:")
+                desc_parts.extend([f"- {feat}" for feat in planning_summary['features']])
+
+            if planning_summary.get('constraints'):
+                desc_parts.append("\nConstraints:")
+                desc_parts.extend([f"- {const}" for const in planning_summary['constraints']])
+
+            description = "\n".join(desc_parts)
+            tech_stack = planning_summary.get('tech_stack', [])
+
+            console.print(f"[green]✓[/green] Loaded planning summary for: [bold]{project.name}[/bold]")
+            console.print(f"[dim]Tech stack: {', '.join(tech_stack)}[/dim]\n")
+
+            state.close()
+
+        elif not description:
+            print_error("Description required (or use --project-id to load from existing project)")
+            sys.exit(1)
 
         # Initialize decomposer
         console.print("[dim]Initializing task decomposer...[/dim]")
@@ -308,7 +354,7 @@ def decompose(description, tech_stack, project_id, save, visualize):
         decomposer = TaskDecomposer(pattern_store=store)
 
         # Perform decomposition
-        console.print(f"[dim]Analyzing: {description}[/dim]")
+        console.print(f"[dim]Analyzing project...[/dim]")
         tech_list = list(tech_stack) if tech_stack else None
 
         with console.status("[bold green]Decomposing project..."):
