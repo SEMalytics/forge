@@ -8,19 +8,20 @@ from typing import Optional, Tuple
 import subprocess
 
 
-def get_git_remote_url(directory: Path = Path.cwd()) -> Optional[str]:
+def get_git_remote_url(directory: Path = Path.cwd(), remote: str = "origin") -> Optional[str]:
     """
     Get the git remote URL for the current directory.
 
     Args:
         directory: Directory to check (defaults to current working directory)
+        remote: Remote name to check (defaults to "origin")
 
     Returns:
         Remote URL or None if not a git repo
     """
     try:
         result = subprocess.run(
-            ["git", "remote", "get-url", "origin"],
+            ["git", "remote", "get-url", remote],
             cwd=directory,
             capture_output=True,
             text=True,
@@ -31,6 +32,42 @@ def get_git_remote_url(directory: Path = Path.cwd()) -> Optional[str]:
         return None
     except FileNotFoundError:
         return None
+
+
+def get_all_git_remotes(directory: Path = Path.cwd()) -> dict[str, str]:
+    """
+    Get all git remotes for the current directory.
+
+    Args:
+        directory: Directory to check (defaults to current working directory)
+
+    Returns:
+        Dictionary mapping remote names to URLs
+    """
+    remotes = {}
+    try:
+        result = subprocess.run(
+            ["git", "remote", "-v"],
+            cwd=directory,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        # Parse output: "origin  git@github.com:user/repo.git (fetch)"
+        for line in result.stdout.strip().split('\n'):
+            if line:
+                parts = line.split()
+                if len(parts) >= 2:
+                    remote_name = parts[0]
+                    remote_url = parts[1]
+                    # Only keep fetch URLs (skip push duplicates)
+                    if "(fetch)" in line:
+                        remotes[remote_name] = remote_url
+
+        return remotes
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return {}
 
 
 def parse_github_url(url: str) -> Optional[Tuple[str, str]]:
@@ -63,9 +100,38 @@ def parse_github_url(url: str) -> Optional[Tuple[str, str]]:
     return None
 
 
+def get_preferred_remote(directory: Path = Path.cwd()) -> Optional[str]:
+    """
+    Get the preferred git remote for CodeGen integration.
+
+    Priority:
+    1. 'internexio' remote (for personal CodeGen accounts)
+    2. 'origin' remote (fallback)
+
+    Args:
+        directory: Directory to check (defaults to current working directory)
+
+    Returns:
+        Remote name or None
+    """
+    remotes = get_all_git_remotes(directory)
+
+    # Prefer internexio for personal CodeGen accounts
+    if "internexio" in remotes:
+        return "internexio"
+
+    # Fall back to origin
+    if "origin" in remotes:
+        return "origin"
+
+    return None
+
+
 def get_github_repo_info(directory: Path = Path.cwd()) -> Optional[Tuple[str, str]]:
     """
     Get GitHub repository owner and name for the current directory.
+
+    Uses preferred remote (internexio > origin) for CodeGen integration.
 
     Args:
         directory: Directory to check (defaults to current working directory)
@@ -73,7 +139,12 @@ def get_github_repo_info(directory: Path = Path.cwd()) -> Optional[Tuple[str, st
     Returns:
         Tuple of (owner, repo_name) or None
     """
-    url = get_git_remote_url(directory)
+    # Get preferred remote for CodeGen
+    preferred = get_preferred_remote(directory)
+    if not preferred:
+        return None
+
+    url = get_git_remote_url(directory, remote=preferred)
     if not url:
         return None
 
