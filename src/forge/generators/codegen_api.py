@@ -266,27 +266,40 @@ class CodeGenAPIGenerator(CodeGenerator):
                 return repo_id
 
             # No matching repository found
-            logger.error(f"No CodeGen repository found for {repo_identifier}")
+            logger.error(f"Cannot auto-detect CodeGen repository for {repo_identifier}")
+            logger.error("")
+            logger.error("CodeGen API does not support repository listing.")
+            logger.error("You must manually configure the repository ID.")
             logger.error("")
             logger.error("To fix this:")
-            logger.error(f"1. Go to: https://github.com/apps/codegen-sh")
-            logger.error(f"2. Click 'Configure' next to {owner}")
-            logger.error(f"3. Select '{repo_identifier}' repository")
-            logger.error(f"4. Go to https://codegen.com/repos to verify")
             logger.error("")
-            logger.error("Then re-run the build.")
-
-            # List available repos for reference
-            try:
-                repos = await client.list_repositories()
-                if repos:
-                    repo_list = [r.get("name", "unknown") for r in repos]
-                    logger.info(f"Available CodeGen repos: {', '.join(repo_list)}")
-            except:
-                pass
+            logger.error("1. Ensure GitHub App is installed:")
+            logger.error(f"   Go to: https://github.com/apps/codegen-sh")
+            logger.error(f"   Click 'Configure' next to {owner}")
+            logger.error(f"   Select '{repo_identifier}' repository")
+            logger.error("")
+            logger.error("2. Find your repository ID:")
+            logger.error(f"   Go to: https://codegen.com/repos")
+            logger.error(f"   Find '{repo_identifier}' in the list")
+            logger.error("   Note the repository ID (shown in URL or repo details)")
+            logger.error("")
+            logger.error("3. Set environment variable:")
+            logger.error("   Add to ~/.zshrc:")
+            logger.error("   export CODEGEN_REPO_ID=<your-repo-id>")
+            logger.error("")
+            logger.error("4. Reload and retry:")
+            logger.error("   source ~/.zshrc")
+            logger.error("   forge build -p <project-id>")
+            logger.error("")
 
         except Exception as e:
             logger.error(f"Error checking CodeGen repositories: {e}")
+            logger.error("")
+            logger.error("Unable to auto-detect repository. Set CODEGEN_REPO_ID manually:")
+            logger.error("1. Go to https://codegen.com/repos")
+            logger.error(f"2. Find repository for: {repo_identifier}")
+            logger.error("3. Set: export CODEGEN_REPO_ID=<repo-id>")
+            logger.error("")
 
         # Don't continue without proper repository context
         logger.error("STOPPING: Cannot proceed without CodeGen repository configured")

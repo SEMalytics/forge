@@ -306,11 +306,15 @@ class CodeGenClient:
         """
         List all repositories accessible to the organization.
 
+        Note: This endpoint may not be available in CodeGen API.
+        Returns empty list if endpoint returns 404.
+
         Returns:
             List of repository dictionaries with id, name, url, etc.
+            Empty list if API endpoint not available.
 
         Raises:
-            CodeGenError: If listing fails
+            CodeGenError: If listing fails (non-404 errors)
         """
         # Ensure org_id is available
         await self._ensure_org_id()
@@ -324,6 +328,14 @@ class CodeGenClient:
                 return response.json()
 
         except httpx.HTTPStatusError as e:
+            # Handle 404 gracefully - this API endpoint may not exist
+            if e.response.status_code == 404:
+                logger.warning(
+                    "Repositories API endpoint not available (404). "
+                    "Repository auto-detection disabled. "
+                    "Set CODEGEN_REPO_ID environment variable to specify repository."
+                )
+                return []
             logger.error(f"HTTP error listing repositories: {e}")
             raise CodeGenError(f"Failed to list repositories: {e.response.text}")
         except Exception as e:
