@@ -158,15 +158,19 @@ Remember: You're helping plan a project that will be built by AI systems, so foc
 
 You are working with an EXISTING project, not creating a new one from scratch. The user wants to extend, improve, or add features to this codebase.
 
+You already have complete information about the project below. Do NOT ask the user "what is [project name]" or basic questions about the project's purpose - you can read about it in the context below.
+
 {self.codebase_context}
 
 When planning:
+- You ALREADY KNOW what this project does (see context above)
+- Focus on understanding the NEW features/improvements the user wants
 - Understand how new features integrate with existing code
 - Respect the existing architecture and patterns
 - Identify which existing files need modification vs new files needed
 - Consider backwards compatibility
 - Plan for testing new features with existing functionality
-- Ask about constraints from the existing codebase if unclear"""
+- Ask about the NEW requirements, not about the existing project basics"""
 
         return base_prompt
 
