@@ -306,36 +306,34 @@ class CodeGenClient:
         """
         List all repositories accessible to the organization.
 
-        Note: This endpoint may not be available in CodeGen API.
-        Returns empty list if endpoint returns 404.
-
         Returns:
             List of repository dictionaries with id, name, url, etc.
-            Empty list if API endpoint not available.
 
         Raises:
-            CodeGenError: If listing fails (non-404 errors)
+            CodeGenError: If listing fails
         """
         # Ensure org_id is available
         await self._ensure_org_id()
 
-        endpoint = f"{self.BASE_URL}/organizations/{self.org_id}/repositories"
+        # Correct endpoint is /repos (not /repositories)
+        endpoint = f"{self.BASE_URL}/organizations/{self.org_id}/repos"
 
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.get(endpoint, headers=self.headers)
                 response.raise_for_status()
-                return response.json()
+                data = response.json()
+
+                # API returns paginated response with 'items' key
+                if isinstance(data, dict) and "items" in data:
+                    return data["items"]
+                elif isinstance(data, list):
+                    return data
+                else:
+                    logger.warning(f"Unexpected response format: {data}")
+                    return []
 
         except httpx.HTTPStatusError as e:
-            # Handle 404 gracefully - this API endpoint may not exist
-            if e.response.status_code == 404:
-                logger.warning(
-                    "Repositories API endpoint not available (404). "
-                    "Repository auto-detection disabled. "
-                    "Set CODEGEN_REPO_ID environment variable to specify repository."
-                )
-                return []
             logger.error(f"HTTP error listing repositories: {e}")
             raise CodeGenError(f"Failed to list repositories: {e.response.text}")
         except Exception as e:
@@ -377,8 +375,11 @@ class CodeGenClient:
         """
         Find repository by name (case-insensitive partial match).
 
+        Searches both 'full_name' (e.g., 'internexio/SEMalytics-forge')
+        and 'name' (e.g., 'SEMalytics-forge') fields.
+
         Args:
-            name: Repository name or partial name
+            name: Repository name, full name, or partial match
 
         Returns:
             Repository dict if found, None otherwise
@@ -389,12 +390,22 @@ class CodeGenClient:
         repos = await self.list_repositories()
         name_lower = name.lower()
 
-        # Try exact match first
+        # Priority 1: Exact match on full_name (e.g., "internexio/SEMalytics-forge")
+        for repo in repos:
+            if repo.get("full_name", "").lower() == name_lower:
+                return repo
+
+        # Priority 2: Exact match on name (e.g., "SEMalytics-forge")
         for repo in repos:
             if repo.get("name", "").lower() == name_lower:
                 return repo
 
-        # Try partial match
+        # Priority 3: Partial match on full_name
+        for repo in repos:
+            if name_lower in repo.get("full_name", "").lower():
+                return repo
+
+        # Priority 4: Partial match on name
         for repo in repos:
             if name_lower in repo.get("name", "").lower():
                 return repo
