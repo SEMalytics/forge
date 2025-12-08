@@ -113,6 +113,17 @@ class CodeGenAPIGenerator(CodeGenerator):
             # Determine repository ID
             repo_id = await self._get_repository_id(codegen_client, context)
 
+            # Stop if no repository configured
+            if repo_id is None:
+                error_msg = "No CodeGen repository configured - cannot proceed"
+                logger.error(error_msg)
+                return GenerationResult(
+                    success=False,
+                    error=error_msg,
+                    duration_seconds=time.time() - start_time,
+                    metadata={"task_id": context.task_id}
+                )
+
             # Create agent run and wait for completion
             result_data = await codegen_client.generate_code(
                 prompt=prompt,
@@ -201,9 +212,11 @@ class CodeGenAPIGenerator(CodeGenerator):
         Determine the CodeGen repository ID to use.
 
         Priority order:
-        1. Explicit repo_id from environment (CODEGEN_REPO_ID)
-        2. Find repo by name matching project context
-        3. None (agent runs without repo context - may use default)
+        1. Detect git remote URL from current directory
+        2. Find matching CodeGen repository by GitHub URL
+        3. Prompt user to set up repository if not found
+        4. Fall back to environment variable CODEGEN_REPO_ID (override)
+        5. None (with warning)
 
         Args:
             client: CodeGen client instance
@@ -213,42 +226,70 @@ class CodeGenAPIGenerator(CodeGenerator):
             Repository ID or None
         """
         import os
+        from forge.utils.git_utils import get_github_repo_info, format_repo_identifier
 
-        # Check environment variable first
+        # Check for explicit override first
         repo_id_env = os.getenv("CODEGEN_REPO_ID")
         if repo_id_env:
             try:
                 repo_id = int(repo_id_env)
-                logger.info(f"Using repository ID from CODEGEN_REPO_ID: {repo_id}")
+                logger.info(f"Using repository ID from CODEGEN_REPO_ID override: {repo_id}")
                 return repo_id
             except ValueError:
                 logger.warning(f"Invalid CODEGEN_REPO_ID: {repo_id_env}")
 
-        # Try to find repository by name
+        # Detect git remote
+        github_info = get_github_repo_info()
+        if not github_info:
+            logger.warning("Not in a git repository or no GitHub remote found")
+            logger.warning("CodeGen agents will run without repository context")
+            return None
+
+        owner, repo_name = github_info
+        repo_identifier = format_repo_identifier(owner, repo_name)
+        logger.info(f"Detected GitHub repository: {repo_identifier}")
+
+        # Try to find matching CodeGen repository
         try:
-            # Look for "forge" repo (or customize based on project context)
-            repo_names = ["forge", "forge-web-ui", "SEMalytics/forge"]
+            # Search by full identifier first
+            repo = await client.find_repository_by_name(repo_identifier)
+            if repo:
+                repo_id = repo.get("id")
+                logger.info(f"Found CodeGen repository '{repo.get('name')}' (ID: {repo_id})")
+                return repo_id
 
-            for name in repo_names:
-                repo = await client.find_repository_by_name(name)
-                if repo:
-                    repo_id = repo.get("id")
-                    logger.info(f"Found repository '{repo.get('name')}' with ID: {repo_id}")
-                    return repo_id
+            # Try just the repo name
+            repo = await client.find_repository_by_name(repo_name)
+            if repo:
+                repo_id = repo.get("id")
+                logger.info(f"Found CodeGen repository '{repo.get('name')}' (ID: {repo_id})")
+                return repo_id
 
-            # List available repos for debugging
-            repos = await client.list_repositories()
-            repo_names_list = [r.get("name", "unknown") for r in repos]
-            logger.warning(
-                f"No matching repository found. Available: {repo_names_list}. "
-                f"Set CODEGEN_REPO_ID environment variable to specify."
-            )
+            # No matching repository found
+            logger.error(f"No CodeGen repository found for {repo_identifier}")
+            logger.error("")
+            logger.error("To fix this:")
+            logger.error(f"1. Go to: https://github.com/apps/codegen-sh")
+            logger.error(f"2. Click 'Configure' next to {owner}")
+            logger.error(f"3. Select '{repo_identifier}' repository")
+            logger.error(f"4. Go to https://codegen.com/repos to verify")
+            logger.error("")
+            logger.error("Then re-run the build.")
+
+            # List available repos for reference
+            try:
+                repos = await client.list_repositories()
+                if repos:
+                    repo_list = [r.get("name", "unknown") for r in repos]
+                    logger.info(f"Available CodeGen repos: {', '.join(repo_list)}")
+            except:
+                pass
 
         except Exception as e:
-            logger.warning(f"Could not determine repository ID: {e}")
+            logger.error(f"Error checking CodeGen repositories: {e}")
 
-        # Fall back to None - agent will run without specific repo context
-        logger.warning("Running agent without repository context - may use default repo!")
+        # Don't continue without proper repository context
+        logger.error("STOPPING: Cannot proceed without CodeGen repository configured")
         return None
 
     def _build_prompt(self, context: GenerationContext) -> str:
