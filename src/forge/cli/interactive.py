@@ -26,6 +26,54 @@ from forge.utils.logger import logger
 console = Console()
 
 
+def _get_multiline_input(prompt: str = "You") -> str:
+    """
+    Get multi-line input from user.
+
+    Supports:
+    - Regular Enter to submit
+    - Ctrl+D (Unix) or Ctrl+Z (Windows) on empty line to submit
+    - Type content normally, use empty line + Ctrl+D to finish
+
+    Args:
+        prompt: Prompt to display
+
+    Returns:
+        User input (potentially multi-line)
+    """
+    console.print(f"\n[bold cyan]{prompt}[/bold cyan] (Enter twice or Ctrl+D to submit):")
+
+    lines = []
+    empty_line_count = 0
+
+    try:
+        while True:
+            try:
+                line = input()
+
+                # If user enters empty line twice in a row, submit
+                if not line.strip():
+                    empty_line_count += 1
+                    if empty_line_count >= 2:
+                        # Remove the last empty line we just added
+                        if lines and not lines[-1].strip():
+                            lines.pop()
+                        break
+                    lines.append(line)
+                else:
+                    empty_line_count = 0
+                    lines.append(line)
+
+            except EOFError:
+                # Ctrl+D (Unix) or Ctrl+Z (Windows)
+                break
+
+    except KeyboardInterrupt:
+        raise
+
+    return "\n".join(lines).strip()
+
+
 async def chat_session(
     api_key: str,
     project_id: Optional[str] = None,
@@ -82,8 +130,8 @@ async def chat_session(
         # Main chat loop
         while True:
             try:
-                # Get user input
-                user_input = Prompt.ask("\n[bold cyan]You[/bold cyan]")
+                # Get user input (supports multi-line)
+                user_input = _get_multiline_input("You")
 
                 # Handle special commands
                 if user_input.lower() in ['done', 'finish', 'complete']:
@@ -163,6 +211,10 @@ def _print_welcome():
 [bold blue]⚒ Forge v1.0.0[/bold blue] - AI Development Orchestration
 
 [dim]I'll help you plan your software project through conversation.[/dim]
+
+[bold]Input:[/bold]
+  • Press Enter for new lines in your message
+  • Press Enter twice (empty line) or Ctrl+D to submit
 
 [bold]Commands:[/bold]
   • Type your project ideas or answer my questions

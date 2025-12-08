@@ -127,13 +127,52 @@ def init(ctx, project_name, description):
 
 
 @cli.command()
-@click.argument('project_id')
+@click.argument('project_id', required=False)
 @click.pass_context
 def status(ctx, project_id):
-    """Show project status"""
+    """Show project status or list all projects"""
     orchestrator = ctx.obj['orchestrator']
 
     try:
+        # If no project_id provided, list all projects
+        if not project_id:
+            from forge.core.state_manager import StateManager
+            state = StateManager()
+
+            projects = state.execute(
+                "SELECT id, name, stage, created_at FROM projects ORDER BY created_at DESC"
+            ).fetchall()
+
+            if not projects:
+                console.print("\n[yellow]No projects found.[/yellow]")
+                console.print("\nCreate a project with: [cyan]forge init <project-name>[/cyan]")
+                console.print("Or start planning: [cyan]forge chat[/cyan]\n")
+                return
+
+            # Display projects table
+            from rich.table import Table
+
+            console.print()
+            table = Table(title="Forge Projects", border_style="blue")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="bold")
+            table.add_column("Stage", style="yellow")
+            table.add_column("Created", style="dim")
+
+            for project in projects:
+                # Format created_at timestamp
+                created = project[3] if project[3] else "Unknown"
+                if len(created) > 19:  # Has full timestamp
+                    created = created[:19].replace('T', ' ')
+
+                table.add_row(project[0], project[1], project[2], created)
+
+            console.print(table)
+            console.print(f"\n💡 Tip: Use [cyan]forge status <project-id>[/cyan] for detailed status\n")
+            state.close()
+            return
+
+        # Show specific project status
         project = orchestrator.get_project(project_id)
 
         if not project:
