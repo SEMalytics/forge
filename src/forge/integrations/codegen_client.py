@@ -135,12 +135,13 @@ class CodeGenClient:
             payload = {"prompt": prompt}
 
             if repository_id:
-                payload["repository_id"] = repository_id
-                logger.info(f"Including repository_id in request: {repository_id}")
+                # API uses "repo_id" not "repository_id"
+                payload["repo_id"] = repository_id
+                logger.info(f"Including repo_id in request: {repository_id}")
             else:
-                logger.warning("No repository_id provided - agent will run without repo context")
+                logger.warning("No repo_id provided - agent will run without repo context")
 
-            logger.debug(f"API payload keys: {list(payload.keys())}")
+            logger.debug(f"API payload: {payload}")
 
             # Handle image upload case vs JSON-only
             async with httpx.AsyncClient(timeout=30.0) as client:
