@@ -50,6 +50,7 @@ class PlanningAgent:
                 "started_at": datetime.now().isoformat(),
                 "turns": 0
             }
+            self.codebase_context = None  # Optional context about existing codebase
             logger.info(f"Initialized PlanningAgent with model: {model}")
         except Exception as e:
             raise PlanningError(f"Failed to initialize planning agent: {e}")
