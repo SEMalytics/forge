@@ -68,13 +68,9 @@ async def chat_session(
 
         # Provide codebase context to agent if available
         if codebase_context:
-            initial_context = f"""I'm working on an existing project. Here's what I found:
-
-{codebase_context['detailed_analysis']}
-
-The user will now tell me what they want to do with this project."""
-            # Send context as initial system message
-            await agent.chat(initial_context, suppress_output=True)
+            # Add codebase context to agent's system prompt/context
+            # The agent will have this context for the entire conversation
+            agent.codebase_context = codebase_context['detailed_analysis']
 
         # Load existing conversation if resuming
         if project_id:
