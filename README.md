@@ -252,6 +252,8 @@ forge deploy --project my-awesome-api --platform flyio --create-pr
 
 ## Examples
 
+### Building from Scratch
+
 View all examples:
 ```bash
 forge examples
@@ -268,6 +270,57 @@ forge example ml-pipeline
 # Full Stack App
 forge example full-stack-app
 ```
+
+### Working with Existing Projects
+
+Forge can improve, refactor, or add features to existing codebases:
+
+```bash
+# Clone an existing project
+git clone https://github.com/yourorg/existing-project.git
+cd existing-project
+
+# Start interactive improvement session
+forge chat
+
+# Example conversation:
+# > What would you like to do with this project?
+# Add user authentication with JWT
+#
+# > I'll analyze the existing codebase and plan the authentication feature...
+# Found: Express.js API with 15 endpoints
+# Recommended: Add passport-jwt middleware
+# Tasks: 5 (database schema, auth routes, middleware, tests, docs)
+#
+# > Should I proceed with implementation?
+# yes
+```
+
+**Common use cases:**
+
+```bash
+# Add a new feature
+forge chat
+> "Add rate limiting to all API endpoints"
+
+# Refactor code
+forge chat
+> "Refactor database queries to use connection pooling"
+
+# Improve performance
+forge chat
+> "Add caching layer with Redis"
+
+# Update dependencies
+forge chat
+> "Migrate from Express 4 to Express 5"
+
+# Add tests
+forge chat
+> "Add integration tests for all API endpoints"
+```
+
+See [Working with Existing Projects](./docs/guides/existing-projects.md) for detailed examples.
 
 ## CLI Reference
 
