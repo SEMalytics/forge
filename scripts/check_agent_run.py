@@ -7,8 +7,15 @@ import asyncio
 import os
 import httpx
 import sys
+from pathlib import Path
 from rich.console import Console
 from rich.json import JSON
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+env_file = Path(__file__).parent.parent / '.env'
+if env_file.exists():
+    load_dotenv(env_file)
 
 console = Console()
 
@@ -85,17 +92,4 @@ if __name__ == "__main__":
         sys.exit(1)
 
     agent_run_id = int(sys.argv[1])
-
-    # Source environment
-    import subprocess
-    result = subprocess.run(
-        ["zsh", "-c", "source ~/.zshrc && env"],
-        capture_output=True,
-        text=True
-    )
-    for line in result.stdout.splitlines():
-        if "=" in line:
-            key, value = line.split("=", 1)
-            os.environ[key] = value
-
     asyncio.run(check_agent_run(agent_run_id))

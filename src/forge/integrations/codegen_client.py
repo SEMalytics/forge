@@ -418,6 +418,115 @@ class CodeGenClient:
 
         return None
 
+    async def get_agent_run_logs(
+        self,
+        agent_run_id: str,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve execution logs for an agent run.
+
+        Args:
+            agent_run_id: ID of the agent run
+            skip: Number of logs to skip (pagination)
+            limit: Maximum logs to retrieve (max 100)
+
+        Returns:
+            List of log entries with timestamps, messages, tool executions, etc.
+
+        Raises:
+            CodeGenError: If log retrieval fails
+        """
+        # Ensure org_id is available
+        await self._ensure_org_id()
+
+        endpoint = f"{self.BASE_URL}/organizations/{self.org_id}/agent/run/{agent_run_id}/logs"
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(
+                    endpoint,
+                    headers=self.headers,
+                    params={"skip": skip, "limit": min(limit, 100)}
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                # API may return list or dict with 'items'
+                if isinstance(data, dict) and "items" in data:
+                    return data["items"]
+                elif isinstance(data, list):
+                    return data
+                else:
+                    return []
+
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error getting agent logs: {e}")
+            raise CodeGenError(f"Failed to get agent logs: {e.response.text}")
+        except Exception as e:
+            logger.error(f"Error getting agent logs: {e}")
+            raise CodeGenError(f"Failed to get agent logs: {e}")
+
+    async def generate_setup_commands(
+        self,
+        repo_id: int,
+        prompt: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate setup commands for a repository.
+
+        This creates initialization scripts that run when the repository's
+        sandbox environment is configured. Setup commands are required for
+        repositories to change from NOT_SETUP status.
+
+        Args:
+            repo_id: Repository ID
+            prompt: Optional custom instructions for setup generation
+
+        Returns:
+            Response containing agent_run_id, status, and url
+
+        Raises:
+            CodeGenError: If generation fails
+        """
+        # Ensure org_id is available
+        await self._ensure_org_id()
+
+        logger.info(f"Generating setup commands for repository {repo_id}...")
+
+        endpoint = f"{self.BASE_URL}/organizations/{self.org_id}/setup-commands/generate"
+
+        payload = {
+            "repo_id": repo_id,
+            "trigger_source": "setup-commands"
+        }
+
+        if prompt:
+            payload["prompt"] = prompt
+
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    endpoint,
+                    headers=self.headers,
+                    json=payload
+                )
+                response.raise_for_status()
+                result = response.json()
+
+                agent_run_id = result.get("agent_run_id")
+                logger.info(f"Setup command generation started: agent_run_id={agent_run_id}")
+
+                return result
+
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error generating setup commands: {e}")
+            raise CodeGenError(f"Failed to generate setup commands: {e.response.text}")
+        except Exception as e:
+            logger.error(f"Error generating setup commands: {e}")
+            raise CodeGenError(f"Failed to generate setup commands: {e}")
+
     async def generate_code(
         self,
         prompt: str,

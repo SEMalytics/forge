@@ -6,6 +6,13 @@ import click
 from rich.console import Console
 from pathlib import Path
 import sys
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+env_file = Path(__file__).parent.parent.parent.parent / '.env'
+if env_file.exists():
+    load_dotenv(env_file)
 
 from forge.core.config import ForgeConfig
 from forge.core.orchestrator import Orchestrator
