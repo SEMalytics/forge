@@ -98,6 +98,66 @@ def doctor():
     else:
         print_info("Forge data directory will be created on first use")
 
+    # Check API credentials and connectivity
+    console.print("\n🔌 Checking API connectivity...\n")
+
+    import os
+    import asyncio
+
+    # Check CodeGen API
+    codegen_key = os.getenv('CODEGEN_API_KEY')
+    codegen_org = os.getenv('CODEGEN_ORG_ID')
+
+    if codegen_key:
+        print_success("CODEGEN_API_KEY is set")
+
+        # Test CodeGen API connectivity
+        try:
+            from forge.integrations.codegen_client import CodeGenClient, CodeGenError
+
+            async def test_codegen():
+                try:
+                    client = CodeGenClient(
+                        api_token=codegen_key,
+                        org_id=codegen_org,
+                        timeout=10
+                    )
+
+                    # Try to fetch org ID (also tests API connectivity)
+                    await client._ensure_org_id()
+
+                    return True, f"Connected (org: {client.org_id})"
+                except CodeGenError as e:
+                    return False, str(e)
+                except Exception as e:
+                    return False, f"Connection failed: {e}"
+
+            success, message = asyncio.run(test_codegen())
+
+            if success:
+                print_success(f"CodeGen API: {message}")
+            else:
+                print_error(f"CodeGen API: {message}")
+
+        except Exception as e:
+            print_warning(f"CodeGen API check failed: {e}")
+    else:
+        print_warning("CODEGEN_API_KEY not set")
+        print_info("Set with: export CODEGEN_API_KEY=your-key")
+
+    if codegen_org:
+        print_success(f"CODEGEN_ORG_ID is set: {codegen_org}")
+    else:
+        print_info("CODEGEN_ORG_ID not set (will auto-fetch)")
+
+    # Check Anthropic API (for planning)
+    anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+    if anthropic_key:
+        print_success("ANTHROPIC_API_KEY is set")
+    else:
+        print_warning("ANTHROPIC_API_KEY not set")
+        print_info("Required for: forge chat")
+
     console.print("\n✨ Forge health check complete!\n")
 
 
