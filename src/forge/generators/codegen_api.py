@@ -203,6 +203,53 @@ class CodeGenAPIGenerator(CodeGenerator):
                 metadata={"task_id": context.task_id}
             )
 
+    async def _ensure_repository_setup(
+        self,
+        client: "CodeGenClient",
+        repo_id: int,
+        repo_info: Dict[str, Any]
+    ):
+        """
+        Ensure repository is properly set up for agent runs.
+
+        Checks if repository has setup commands configured. If NOT_SETUP,
+        automatically triggers setup command generation.
+
+        Args:
+            client: CodeGen client instance
+            repo_id: Repository ID
+            repo_info: Repository information dict
+
+        Raises:
+            GeneratorError: If setup fails
+        """
+        setup_status = repo_info.get("setup_status", "UNKNOWN")
+        repo_name = repo_info.get("full_name", f"repo-{repo_id}")
+
+        if setup_status == "NOT_SETUP":
+            logger.warning(f"Repository {repo_name} requires setup")
+            logger.info("Automatically generating setup commands...")
+
+            try:
+                from forge.integrations.codegen_setup import ensure_repository_setup
+
+                # Trigger setup with auto-setup enabled
+                await ensure_repository_setup(
+                    client=client,
+                    repo_id=repo_id,
+                    auto_setup=True
+                )
+
+                logger.info(f"Repository {repo_name} setup completed")
+
+            except Exception as e:
+                logger.error(f"Failed to setup repository: {e}")
+                raise GeneratorError(
+                    f"Repository {repo_name} is not set up and automatic setup failed.\n"
+                    f"Please configure setup commands manually at:\n"
+                    f"https://codegen.com/repos/{repo_info.get('name', '')}/setup-commands"
+                )
+
     async def _get_repository_id(
         self,
         client: "CodeGenClient",
@@ -256,6 +303,10 @@ class CodeGenAPIGenerator(CodeGenerator):
             if repo:
                 repo_id = repo.get("id")
                 logger.info(f"Found CodeGen repository '{repo.get('name')}' (ID: {repo_id})")
+
+                # Check repository setup status
+                await _ensure_repository_setup(client, repo_id, repo)
+
                 return repo_id
 
             # Try just the repo name
@@ -263,6 +314,10 @@ class CodeGenAPIGenerator(CodeGenerator):
             if repo:
                 repo_id = repo.get("id")
                 logger.info(f"Found CodeGen repository '{repo.get('name')}' (ID: {repo_id})")
+
+                # Check repository setup status
+                await _ensure_repository_setup(client, repo_id, repo)
+
                 return repo_id
 
             # No matching repository found
