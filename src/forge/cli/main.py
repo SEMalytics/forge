@@ -78,11 +78,18 @@ def doctor():
         print_info("Patterns should be in the repository at ./patterns/")
 
     # Check CE plugin (optional - Forge has built-in CE-style planning)
-    ce_dir = Path("../compound-engineering")
+    # Look for plugin inside the forge directory
+    repo_root = Path(__file__).parent.parent.parent.parent
+    ce_dir = repo_root / "compound-engineering"
+
     if ce_dir.exists():
-        print_success("Compound Engineering plugin (external)")
+        plan_file = ce_dir / "plugins" / "compound-engineering" / "commands" / "workflows" / "plan.md"
+        if plan_file.exists():
+            print_success("Compound Engineering plugin (for Claude Code integration)")
+        else:
+            print_warning("compound-engineering/ exists but structure is incomplete")
     else:
-        print_info("Using built-in CE-style planning (external plugin not required)")
+        print_info("Using built-in CE-style planning (clone plugin for Claude Code integration)")
 
     # Check Forge directories
     forge_dir = Path(".forge")

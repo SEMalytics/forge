@@ -108,7 +108,7 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed design.
 
 ### Requirements
 
-- Python 3.11+
+- Python 3.11 or 3.12 (NOT 3.13+, as dependencies don't support it yet)
 - Docker (for testing)
 - Git
 - API Keys:
@@ -116,22 +116,39 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed design.
   - `OPENAI_API_KEY` for GPT-4 (optional)
   - `GITHUB_TOKEN` for PR creation (optional)
 
-### From Source
+### Quick Start
 
 ```bash
 # Clone repository
 git clone https://github.com/SEMalytics/forge.git
 cd forge
 
-# Install with Poetry
+# Install with Poetry (use Python 3.11 or 3.12)
+poetry env use python3.11  # If you have Python 3.13+
 poetry install
 
-# Verify installation
-poetry run forge --version
+# Install as CLI command (so you can type 'forge' anywhere)
+pip install -e .
 
-# Patterns are included in the repository
-poetry run forge doctor
+# Verify installation
+forge --version
+forge doctor
 ```
+
+### Optional: Compound Engineering Plugin
+
+For enhanced Claude Code integration, install the CE plugin:
+
+```bash
+# From inside the forge directory
+git clone https://github.com/SEMalytics/compound-engineering-plugin.git compound-engineering
+
+# Verify
+forge doctor
+# Should show: ✓ Compound Engineering plugin (for Claude Code integration)
+```
+
+**Note**: The CE plugin is optional. Forge has built-in CE-style planning and works perfectly without it. The plugin adds advanced features for Claude Code workflows.
 
 ## Usage
 

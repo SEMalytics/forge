@@ -74,11 +74,13 @@ class CompoundEngineeringClient:
         Initialize CE client.
 
         Args:
-            ce_plugin_path: Path to CE plugin directory (defaults to ../compound-engineering)
+            ce_plugin_path: Path to CE plugin directory (defaults to ./compound-engineering)
         """
         if ce_plugin_path is None:
-            # Default to sibling directory
-            ce_plugin_path = Path(__file__).parent.parent.parent.parent.parent / "compound-engineering"
+            # Default to compound-engineering subdirectory in the Forge repository
+            # This makes it simple: just clone the plugin inside the forge directory
+            repo_root = Path(__file__).parent.parent.parent.parent
+            ce_plugin_path = repo_root / "compound-engineering"
 
         self.ce_plugin_path = Path(ce_plugin_path)
         self.ce_available = self._check_ce_availability()
