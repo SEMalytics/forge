@@ -131,37 +131,44 @@ class CodeGenClient:
         endpoint = f"{self.BASE_URL}/organizations/{self.org_id}/agent/run"
 
         try:
-            # Prepare form data
-            files = None
-            data = {"prompt": prompt}
+            # Prepare request data
+            payload = {"prompt": prompt}
 
             if repository_id:
-                data["repository_id"] = repository_id
+                payload["repository_id"] = repository_id
 
-            if image_path and image_path.exists():
-                files = {"image": open(image_path, "rb")}
-
+            # Handle image upload case vs JSON-only
             async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    endpoint,
-                    headers=self.headers,
-                    data=data,
-                    files=files
-                )
-
-                if files:
+                if image_path and image_path.exists():
+                    # For multipart/form-data with files, use data= and files=
+                    files = {"image": open(image_path, "rb")}
+                    # Remove Content-Type header for multipart/form-data (httpx sets it automatically)
+                    headers = {k: v for k, v in self.headers.items() if k.lower() != "content-type"}
+                    response = await client.post(
+                        endpoint,
+                        headers=headers,
+                        data=payload,
+                        files=files
+                    )
                     files["image"].close()
+                else:
+                    # For JSON payload without files, use json=
+                    response = await client.post(
+                        endpoint,
+                        headers=self.headers,
+                        json=payload
+                    )
 
-                response.raise_for_status()
-                result = response.json()
+            response.raise_for_status()
+            result = response.json()
 
-                agent_run_id = result.get("agent_run_id") or result.get("id")
+            agent_run_id = result.get("agent_run_id") or result.get("id")
 
-                if not agent_run_id:
-                    raise CodeGenError(f"No agent_run_id in response: {result}")
+            if not agent_run_id:
+                raise CodeGenError(f"No agent_run_id in response: {result}")
 
-                logger.info(f"Created agent run: {agent_run_id}")
-                return agent_run_id
+            logger.info(f"Created agent run: {agent_run_id}")
+            return agent_run_id
 
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error creating agent run: {e}")

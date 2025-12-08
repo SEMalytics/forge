@@ -20,7 +20,7 @@ class GeneratorConfig(BaseModel):
     backend: str = "codegen_api"  # or "claude_code"
     api_key: Optional[str] = None
     org_id: Optional[str] = None
-    timeout: int = 300
+    timeout: int = 1800  # 30 minutes for CodeGen agent runs
     base_url: Optional[str] = None
 
 
