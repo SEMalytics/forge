@@ -64,7 +64,7 @@ forge.yaml
 *.db-journal
 
 # Compound Engineering plugin (optional)
-# Clone from https://github.com/SEMalytics/compound-engineering-plugin
+# Clone from https://github.com/EveryInc/compound-engineering-plugin
 compound-engineering/
 
 # Logs

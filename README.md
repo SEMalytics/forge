@@ -141,14 +141,14 @@ For enhanced Claude Code integration, install the CE plugin:
 
 ```bash
 # From inside the forge directory
-git clone https://github.com/SEMalytics/compound-engineering-plugin.git compound-engineering
+git clone https://github.com/EveryInc/compound-engineering-plugin.git compound-engineering
 
 # Verify
 forge doctor
 # Should show: ✓ Compound Engineering plugin (for Claude Code integration)
 ```
 
-**Note**: The CE plugin is optional. Forge has built-in CE-style planning and works perfectly without it. The plugin adds advanced features for Claude Code workflows.
+**Note**: The CE plugin is optional. Forge has built-in CE-style planning and works perfectly without it. The plugin adds advanced Claude Code workflow features when you're working in Claude Code.
 
 ## Usage
 
