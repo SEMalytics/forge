@@ -28,6 +28,54 @@ class GenerationError(ForgeError):
     pass
 
 
+def _build_codebase_context(max_files: int = 20, max_size_per_file: int = 1000) -> Dict[str, str]:
+    """
+    Build codebase context from existing project files.
+
+    Args:
+        max_files: Maximum number of files to include
+        max_size_per_file: Maximum characters per file
+
+    Returns:
+        Dictionary mapping file paths to content snippets
+    """
+    file_structure = {}
+    cwd = Path.cwd()
+
+    # Key files to include for context
+    important_patterns = [
+        "README.md",
+        "pyproject.toml",
+        "src/forge/core/*.py",
+        "src/forge/cli/*.py",
+        "src/forge/generators/base.py",
+        "src/forge/integrations/*.py",
+    ]
+
+    file_count = 0
+    for pattern in important_patterns:
+        if file_count >= max_files:
+            break
+
+        for file_path in cwd.glob(pattern):
+            if file_count >= max_files:
+                break
+
+            if file_path.is_file() and file_path.suffix in ['.py', '.md', '.toml', '.yaml', '.json']:
+                try:
+                    content = file_path.read_text(encoding='utf-8')
+                    relative_path = str(file_path.relative_to(cwd))
+
+                    # Include snippet for context
+                    file_structure[relative_path] = content[:max_size_per_file]
+                    file_count += 1
+                except Exception as e:
+                    logger.debug(f"Skipping {file_path}: {e}")
+                    continue
+
+    return file_structure
+
+
 class TaskStatus(Enum):
     """Task generation status"""
     QUEUED = "queued"
@@ -349,7 +397,10 @@ class GenerationOrchestrator:
                     completed=10
                 )
 
-            # Build generation context
+            # Build generation context with codebase file structure
+            codebase_context = _build_codebase_context()
+            logger.debug(f"Including {len(codebase_context)} files in generation context")
+
             context = GenerationContext(
                 task_id=task.id,
                 specification=task.description,
@@ -357,6 +408,7 @@ class GenerationOrchestrator:
                 tech_stack=getattr(task, 'tech_stack', []),
                 dependencies=task.dependencies,
                 knowledgeforge_patterns=task.kf_patterns,
+                file_structure=codebase_context,
                 metadata={
                     "title": task.title,
                     "priority": task.priority,
