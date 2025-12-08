@@ -134,14 +134,19 @@ class CodeGenClient:
             # Prepare request data
             payload = {"prompt": prompt}
 
+            # Debug: Log repository_id value and type
+            logger.info(f"create_agent_run called with repository_id={repository_id} (type: {type(repository_id).__name__})")
+
             if repository_id:
                 # API uses "repo_id" not "repository_id"
                 payload["repo_id"] = repository_id
-                logger.info(f"Including repo_id in request: {repository_id}")
+                # CRITICAL: Must specify agent_type for repo_id to work!
+                payload["agent_type"] = "codegen"
+                logger.info(f"✓ Including repo_id in request: {repository_id} with agent_type=codegen")
             else:
-                logger.warning("No repo_id provided - agent will run without repo context")
+                logger.warning(f"⚠ No repo_id provided (repository_id={repository_id}) - agent will run without repo context")
 
-            logger.debug(f"API payload: {payload}")
+            logger.info(f"API payload: {payload}")
 
             # Handle image upload case vs JSON-only
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -168,12 +173,22 @@ class CodeGenClient:
             response.raise_for_status()
             result = response.json()
 
+            # Log full response for debugging
+            logger.info(f"API Response Status: {response.status_code}")
+            logger.info(f"API Response Body: {result}")
+
             agent_run_id = result.get("agent_run_id") or result.get("id")
 
             if not agent_run_id:
                 raise CodeGenError(f"No agent_run_id in response: {result}")
 
-            logger.info(f"Created agent run: {agent_run_id}")
+            # Check if repository was actually set in the response
+            response_repo_id = result.get("repository_id") or result.get("repo_id")
+            if response_repo_id:
+                logger.info(f"✓ Agent run {agent_run_id} created with repository ID: {response_repo_id}")
+            else:
+                logger.warning(f"⚠ Agent run {agent_run_id} created WITHOUT repository context (API may have rejected repo_id)")
+
             return agent_run_id
 
         except httpx.HTTPStatusError as e:
