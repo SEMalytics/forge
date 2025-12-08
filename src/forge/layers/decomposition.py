@@ -293,20 +293,22 @@ class TaskDecomposer:
             )
 
             # Also create tasks in state manager
+            from forge.core.state_manager import TaskState
             for task in tasks:
-                self.state_manager.create_task(
+                task_state = TaskState(
+                    id=task.id,
                     project_id=project_id,
-                    task_id=task.id,
                     title=task.title,
-                    description=task.description,
+                    status='pending',
+                    priority=task.priority,
                     dependencies=task.dependencies,
-                    metadata={
-                        "kf_patterns": task.kf_patterns,
-                        "complexity": task.estimated_complexity,
-                        "acceptance_criteria": task.acceptance_criteria,
-                        "tags": task.tags
-                    }
+                    generated_files={},
+                    test_results=None,
+                    commits=[],
+                    duration_seconds=0.0,
+                    error=None
                 )
+                self.state_manager.create_task(task_state)
 
             logger.info(f"Saved decomposition for project {project_id}")
 
