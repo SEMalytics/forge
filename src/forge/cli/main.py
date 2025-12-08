@@ -457,28 +457,23 @@ def build(project_id, backend, parallel, max_parallel):
         console.print(f"[bold]Stage:[/bold] {project.stage}\n")
 
         # Get tasks for project
-        # First check if tasks exist in state
-        tasks_data = state.execute(
-            "SELECT * FROM tasks WHERE project_id = ?",
-            (project_id,)
-        ).fetchall()
+        task_states = state.get_project_tasks(project_id)
 
-        if not tasks_data:
+        if not task_states:
             print_warning("No tasks found. Run 'forge decompose' first.")
             sys.exit(1)
 
-        # Convert to Task objects
+        # Convert TaskState objects to Task objects for generation
         from forge.integrations.compound_engineering import Task
         tasks = []
-        for row in tasks_data:
-            metadata = eval(row[6]) if row[6] else {}
+        for task_state in task_states:
             tasks.append(Task(
-                id=row[1],
-                title=row[2],
-                description=row[3],
-                dependencies=eval(row[4]) if row[4] else [],
-                priority=1,
-                kf_patterns=metadata.get('kf_patterns', [])
+                id=task_state.id,
+                title=task_state.title,
+                description=task_state.title,  # TaskState doesn't have description
+                dependencies=task_state.dependencies,
+                priority=task_state.priority,
+                kf_patterns=[]  # Will be enriched later
             ))
 
         console.print(f"Found {len(tasks)} tasks to build\n")
