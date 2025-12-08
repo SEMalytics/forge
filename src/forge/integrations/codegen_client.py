@@ -31,7 +31,7 @@ class CodeGenClient:
     def __init__(
         self,
         api_token: str,
-        org_id: str,
+        org_id: Optional[str] = None,
         timeout: int = 300,
         poll_interval: int = 5
     ):
@@ -40,7 +40,7 @@ class CodeGenClient:
 
         Args:
             api_token: CodeGen API token
-            org_id: Organization ID
+            org_id: Organization ID (optional - will be auto-fetched if not provided)
             timeout: Maximum time to wait for agent completion (seconds)
             poll_interval: Time between status checks (seconds)
 
@@ -49,11 +49,9 @@ class CodeGenClient:
         """
         if not api_token:
             raise CodeGenError("CodeGen API token is required")
-        if not org_id:
-            raise CodeGenError("CodeGen organization ID is required")
 
         self.api_token = api_token
-        self.org_id = org_id
+        self.org_id = org_id  # May be None initially
         self.timeout = timeout
         self.poll_interval = poll_interval
 
@@ -62,7 +60,47 @@ class CodeGenClient:
             "Content-Type": "application/json"
         }
 
-        logger.info(f"Initialized CodeGen client for org: {org_id}")
+        if org_id:
+            logger.info(f"Initialized CodeGen client for org: {org_id}")
+        else:
+            logger.info("Initialized CodeGen client (org_id will be auto-fetched)")
+
+    async def _ensure_org_id(self):
+        """Ensure org_id is set, fetching it if necessary."""
+        if self.org_id:
+            return
+
+        logger.info("Auto-fetching organization ID...")
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(
+                    f"{self.BASE_URL}/user",
+                    headers=self.headers
+                )
+                response.raise_for_status()
+                user_info = response.json()
+
+                # Extract org_id from user info
+                # API may return it as 'organization_id', 'org_id', or in 'organizations' array
+                self.org_id = (
+                    user_info.get("organization_id") or
+                    user_info.get("org_id") or
+                    (user_info.get("organizations", [{}])[0].get("id") if user_info.get("organizations") else None)
+                )
+
+                if not self.org_id:
+                    raise CodeGenError(
+                        "Could not auto-fetch organization ID. Please provide it explicitly via "
+                        "CODEGEN_ORG_ID environment variable or in forge.yaml config."
+                    )
+
+                logger.info(f"Auto-fetched organization ID: {self.org_id}")
+
+        except httpx.HTTPStatusError as e:
+            raise CodeGenError(f"Failed to fetch organization ID: {e.response.text}")
+        except Exception as e:
+            raise CodeGenError(f"Failed to fetch organization ID: {e}")
 
     async def create_agent_run(
         self,
@@ -84,6 +122,9 @@ class CodeGenClient:
         Raises:
             CodeGenError: If agent creation fails
         """
+        # Ensure org_id is available
+        await self._ensure_org_id()
+
         logger.info("Creating CodeGen agent run...")
         logger.debug(f"Prompt: {prompt[:200]}...")
 
@@ -142,6 +183,9 @@ class CodeGenClient:
         Raises:
             CodeGenError: If status retrieval fails
         """
+        # Ensure org_id is available
+        await self._ensure_org_id()
+
         endpoint = f"{self.BASE_URL}/organizations/{self.org_id}/agent/run/{agent_run_id}"
 
         try:
@@ -227,6 +271,9 @@ class CodeGenClient:
         Raises:
             CodeGenError: If resume fails
         """
+        # Ensure org_id is available
+        await self._ensure_org_id()
+
         logger.info(f"Resuming agent run {agent_run_id}...")
 
         endpoint = f"{self.BASE_URL}/organizations/{self.org_id}/agent/run/{agent_run_id}/resume"
