@@ -73,14 +73,15 @@ Expected location: ../knowledgeforge-patterns/00_KB3_Core.md
 
 **Solution**:
 ```bash
-# Clone patterns repository
-cd ..
-git clone https://github.com/your-org/knowledgeforge-patterns.git
+# Patterns are included in the repository
+ls patterns/
 
-# Verify
-ls ../knowledgeforge-patterns/*.md
+# Verify patterns directory structure
+ls patterns/architecture/
+ls patterns/development/
+ls patterns/deployment/
 
-# Or set custom path
+# Or set custom path if needed
 export FORGE_PATTERNS_DIR=/path/to/patterns
 ```
 
@@ -520,7 +521,7 @@ If none of the above solutions work:
    - Error messages
 
 3. **Report**:
-   - GitHub Issues: https://github.com/your-org/forge/issues
+   - GitHub Issues: https://github.com/SEMalytics/forge/issues
    - Include system info and reproduction steps
    - Attach logs if relevant
 

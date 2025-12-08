@@ -120,7 +120,7 @@ See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed design.
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/forge.git
+git clone https://github.com/SEMalytics/forge.git
 cd forge
 
 # Install with Poetry
@@ -128,17 +128,8 @@ poetry install
 
 # Verify installation
 poetry run forge --version
-```
 
-### Setup KnowledgeForge Patterns
-
-```bash
-# Clone patterns repository
-cd ..
-git clone https://github.com/your-org/knowledgeforge-patterns.git
-
-# Verify setup
-cd forge
+# Patterns are included in the repository
 poetry run forge doctor
 ```
 
@@ -371,15 +362,15 @@ See [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for common issues and soluti
 Quick fixes:
 
 ```bash
-# Pattern files not found
-git clone https://github.com/your-org/knowledgeforge-patterns.git ../knowledgeforge-patterns
-
 # API key not found
 export ANTHROPIC_API_KEY=your_key_here
 
 # Docker connection failed
 # macOS: Open Docker Desktop
 # Linux: sudo systemctl start docker
+
+# Pattern files included in repository at ./patterns/
+# Verify with: ls patterns/
 ```
 
 ## Performance
@@ -403,14 +394,14 @@ MIT License - see [LICENSE](./LICENSE) for details.
 ## Support
 
 - **Documentation**: [docs/](./docs/)
-- **Examples**: [examples/](./examples/)
-- **Issues**: [GitHub Issues](https://github.com/your-org/forge/issues)
+- **Patterns**: [patterns/](./patterns/)
+- **Issues**: [GitHub Issues](https://github.com/SEMalytics/forge/issues)
 
 ## Acknowledgments
 
 - Built with [Claude](https://anthropic.com) by Anthropic
-- Inspired by [KnowledgeForge](https://github.com/your-org/knowledgeforge)
 - Powered by [Poetry](https://python-poetry.org/)
+- Developed by [SEMalytics](https://github.com/SEMalytics)
 
 ---
 

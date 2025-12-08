@@ -33,7 +33,7 @@ class GitConfig(BaseModel):
 
 class KnowledgeForgeConfig(BaseModel):
     """KnowledgeForge pattern configuration"""
-    patterns_dir: str = "../knowledgeforge-patterns"
+    patterns_dir: str = "patterns"
     embedding_model: str = "all-MiniLM-L6-v2"
     cache_size: int = 128
     search_method: str = "hybrid"  # keyword, semantic, or hybrid
