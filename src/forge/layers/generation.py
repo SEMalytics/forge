@@ -305,10 +305,28 @@ class GenerationOrchestrator:
                         await coro
                         completed.add(task_id)
                         in_progress.remove(task_id)
+
+                        # Check if critical setup task failed
+                        execution = executions[task_id]
+                        if execution.status == TaskStatus.FAILED:
+                            # If this is task-001 (Project Setup) or any task with "setup" in title, fail fast
+                            if task_id == "task-001" or "setup" in execution.task.title.lower():
+                                logger.error(f"Critical setup task {task_id} failed - stopping build")
+                                raise GenerationError(f"Build stopped: {execution.task.title} failed")
+
+                    except GenerationError:
+                        # Re-raise Generation errors (fail-fast)
+                        raise
                     except Exception as e:
                         logger.error(f"Task {task_id} failed: {e}")
                         completed.add(task_id)
                         in_progress.remove(task_id)
+
+                        # Check if this was a critical task
+                        execution = executions.get(task_id)
+                        if execution and (task_id == "task-001" or "setup" in execution.task.title.lower()):
+                            logger.error(f"Critical setup task {task_id} failed - stopping build")
+                            raise GenerationError(f"Build stopped: {execution.task.title} failed")
 
             # Small delay to avoid busy loop
             await asyncio.sleep(0.1)
@@ -334,6 +352,13 @@ class GenerationOrchestrator:
                 project_id, execution, project_context, progress, results
             )
             completed.add(execution.task.id)
+
+            # Check if critical setup task failed - stop immediately in sequential mode
+            if execution.status == TaskStatus.FAILED:
+                task_id = execution.task.id
+                if task_id == "task-001" or "setup" in execution.task.title.lower():
+                    logger.error(f"Critical setup task {task_id} failed - stopping build")
+                    raise GenerationError(f"Build stopped: {execution.task.title} failed")
 
         return results
 

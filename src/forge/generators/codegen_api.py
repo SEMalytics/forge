@@ -110,10 +110,13 @@ class CodeGenAPIGenerator(CodeGenerator):
                 timeout=self.timeout
             )
 
+            # Determine repository ID
+            repo_id = await self._get_repository_id(codegen_client, context)
+
             # Create agent run and wait for completion
             result_data = await codegen_client.generate_code(
                 prompt=prompt,
-                repository_id=None,  # No repository context for now
+                repository_id=repo_id,
                 on_progress=lambda status: logger.debug(f"CodeGen status: {status.get('status')}")
             )
 
@@ -188,6 +191,65 @@ class CodeGenAPIGenerator(CodeGenerator):
                 duration_seconds=duration,
                 metadata={"task_id": context.task_id}
             )
+
+    async def _get_repository_id(
+        self,
+        client: "CodeGenClient",
+        context: GenerationContext
+    ) -> Optional[int]:
+        """
+        Determine the CodeGen repository ID to use.
+
+        Priority order:
+        1. Explicit repo_id from environment (CODEGEN_REPO_ID)
+        2. Find repo by name matching project context
+        3. None (agent runs without repo context - may use default)
+
+        Args:
+            client: CodeGen client instance
+            context: Generation context
+
+        Returns:
+            Repository ID or None
+        """
+        import os
+
+        # Check environment variable first
+        repo_id_env = os.getenv("CODEGEN_REPO_ID")
+        if repo_id_env:
+            try:
+                repo_id = int(repo_id_env)
+                logger.info(f"Using repository ID from CODEGEN_REPO_ID: {repo_id}")
+                return repo_id
+            except ValueError:
+                logger.warning(f"Invalid CODEGEN_REPO_ID: {repo_id_env}")
+
+        # Try to find repository by name
+        try:
+            # Look for "forge" repo (or customize based on project context)
+            repo_names = ["forge", "forge-web-ui", "SEMalytics/forge"]
+
+            for name in repo_names:
+                repo = await client.find_repository_by_name(name)
+                if repo:
+                    repo_id = repo.get("id")
+                    logger.info(f"Found repository '{repo.get('name')}' with ID: {repo_id}")
+                    return repo_id
+
+            # List available repos for debugging
+            repos = await client.list_repositories()
+            repo_names_list = [r.get("name", "unknown") for r in repos]
+            logger.warning(
+                f"No matching repository found. Available: {repo_names_list}. "
+                f"Set CODEGEN_REPO_ID environment variable to specify."
+            )
+
+        except Exception as e:
+            logger.warning(f"Could not determine repository ID: {e}")
+
+        # Fall back to None - agent will run without specific repo context
+        logger.warning("Running agent without repository context - may use default repo!")
+        return None
 
     def _build_prompt(self, context: GenerationContext) -> str:
         """

@@ -105,7 +105,7 @@ class CodeGenClient:
     async def create_agent_run(
         self,
         prompt: str,
-        repository_id: Optional[str] = None,
+        repository_id: Optional[int] = None,
         image_path: Optional[Path] = None
     ) -> str:
         """
@@ -113,7 +113,7 @@ class CodeGenClient:
 
         Args:
             prompt: Task description for the agent
-            repository_id: Optional repository to work in
+            repository_id: Optional repository ID (integer) to work in
             image_path: Optional image file to include
 
         Returns:
@@ -302,10 +302,97 @@ class CodeGenClient:
             logger.error(f"Error resuming agent: {e}")
             raise CodeGenError(f"Failed to resume agent: {e}")
 
+    async def list_repositories(self) -> List[Dict[str, Any]]:
+        """
+        List all repositories accessible to the organization.
+
+        Returns:
+            List of repository dictionaries with id, name, url, etc.
+
+        Raises:
+            CodeGenError: If listing fails
+        """
+        # Ensure org_id is available
+        await self._ensure_org_id()
+
+        endpoint = f"{self.BASE_URL}/organizations/{self.org_id}/repositories"
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(endpoint, headers=self.headers)
+                response.raise_for_status()
+                return response.json()
+
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error listing repositories: {e}")
+            raise CodeGenError(f"Failed to list repositories: {e.response.text}")
+        except Exception as e:
+            logger.error(f"Error listing repositories: {e}")
+            raise CodeGenError(f"Failed to list repositories: {e}")
+
+    async def get_repository(self, repo_id: int) -> Dict[str, Any]:
+        """
+        Get repository details by ID.
+
+        Args:
+            repo_id: Repository ID
+
+        Returns:
+            Repository dictionary with id, name, url, etc.
+
+        Raises:
+            CodeGenError: If retrieval fails
+        """
+        # Ensure org_id is available
+        await self._ensure_org_id()
+
+        endpoint = f"{self.BASE_URL}/organizations/{self.org_id}/repositories/{repo_id}"
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(endpoint, headers=self.headers)
+                response.raise_for_status()
+                return response.json()
+
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error getting repository: {e}")
+            raise CodeGenError(f"Failed to get repository: {e.response.text}")
+        except Exception as e:
+            logger.error(f"Error getting repository: {e}")
+            raise CodeGenError(f"Failed to get repository: {e}")
+
+    async def find_repository_by_name(self, name: str) -> Optional[Dict[str, Any]]:
+        """
+        Find repository by name (case-insensitive partial match).
+
+        Args:
+            name: Repository name or partial name
+
+        Returns:
+            Repository dict if found, None otherwise
+
+        Raises:
+            CodeGenError: If listing fails
+        """
+        repos = await self.list_repositories()
+        name_lower = name.lower()
+
+        # Try exact match first
+        for repo in repos:
+            if repo.get("name", "").lower() == name_lower:
+                return repo
+
+        # Try partial match
+        for repo in repos:
+            if name_lower in repo.get("name", "").lower():
+                return repo
+
+        return None
+
     async def generate_code(
         self,
         prompt: str,
-        repository_id: Optional[str] = None,
+        repository_id: Optional[int] = None,
         on_progress: Optional[callable] = None
     ) -> Dict[str, Any]:
         """
@@ -313,7 +400,7 @@ class CodeGenClient:
 
         Args:
             prompt: Code generation task description
-            repository_id: Optional repository context
+            repository_id: Repository ID (integer) - CRITICAL for targeting correct repo
             on_progress: Optional progress callback
 
         Returns:
