@@ -226,6 +226,32 @@ class StateManager:
             )
         return None
 
+    def list_projects(self) -> List[ProjectState]:
+        """
+        List all projects
+
+        Returns:
+            List of all projects ordered by creation date (newest first)
+        """
+        cursor = self.conn.execute("""
+            SELECT id, name, description, stage, created_at, updated_at, metadata
+            FROM projects
+            ORDER BY created_at DESC
+        """)
+
+        projects = []
+        for row in cursor.fetchall():
+            projects.append(ProjectState(
+                id=row['id'],
+                name=row['name'],
+                description=row['description'],
+                stage=row['stage'],
+                created_at=datetime.fromisoformat(row['created_at']),
+                updated_at=datetime.fromisoformat(row['updated_at']),
+                metadata=json.loads(row['metadata'])
+            ))
+        return projects
+
     def update_project_stage(self, project_id: str, stage: str):
         """
         Update project stage

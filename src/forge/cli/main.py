@@ -139,14 +139,13 @@ def status(ctx, project_id):
             from forge.core.state_manager import StateManager
             state = StateManager()
 
-            projects = state.execute(
-                "SELECT id, name, stage, created_at FROM projects ORDER BY created_at DESC"
-            ).fetchall()
+            projects = state.list_projects()
 
             if not projects:
                 console.print("\n[yellow]No projects found.[/yellow]")
                 console.print("\nCreate a project with: [cyan]forge init <project-name>[/cyan]")
                 console.print("Or start planning: [cyan]forge chat[/cyan]\n")
+                state.close()
                 return
 
             # Display projects table
@@ -161,11 +160,8 @@ def status(ctx, project_id):
 
             for project in projects:
                 # Format created_at timestamp
-                created = project[3] if project[3] else "Unknown"
-                if len(created) > 19:  # Has full timestamp
-                    created = created[:19].replace('T', ' ')
-
-                table.add_row(project[0], project[1], project[2], created)
+                created = project.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                table.add_row(project.id, project.name, project.stage, created)
 
             console.print(table)
             console.print(f"\n💡 Tip: Use [cyan]forge status <project-id>[/cyan] for detailed status\n")
