@@ -29,7 +29,8 @@ console = Console()
 async def chat_session(
     api_key: str,
     project_id: Optional[str] = None,
-    save_session: bool = True
+    save_session: bool = True,
+    analyze_cwd: bool = True
 ) -> Dict[str, Any]:
     """
     Run interactive planning chat session.
@@ -38,6 +39,7 @@ async def chat_session(
         api_key: Anthropic API key
         project_id: Optional existing project ID to continue
         save_session: Whether to save conversation history
+        analyze_cwd: Whether to analyze current directory codebase
 
     Returns:
         Project summary dictionary
@@ -49,8 +51,30 @@ async def chat_session(
         # Initialize planning agent
         agent = PlanningAgent(api_key)
 
+        # Analyze existing codebase if in a project directory
+        codebase_context = None
+        if analyze_cwd and not project_id:
+            codebase_context = _analyze_codebase()
+            if codebase_context:
+                console.print("\n[green]✓[/green] Analyzed existing codebase\n")
+                console.print(Panel(
+                    codebase_context["summary"],
+                    title="[bold]Codebase Analysis[/bold]",
+                    border_style="blue"
+                ))
+
         # Print welcome banner
         _print_welcome()
+
+        # Provide codebase context to agent if available
+        if codebase_context:
+            initial_context = f"""I'm working on an existing project. Here's what I found:
+
+{codebase_context['detailed_analysis']}
+
+The user will now tell me what they want to do with this project."""
+            # Send context as initial system message
+            await agent.chat(initial_context, suppress_output=True)
 
         # Load existing conversation if resuming
         if project_id:
@@ -311,6 +335,134 @@ def _create_project_from_summary(summary: Dict[str, Any]):
     except Exception as e:
         console.print(f"\n[red]✗[/red] Failed to create project: {e}")
         return None
+
+
+def _analyze_codebase() -> Optional[Dict[str, Any]]:
+    """
+    Analyze the current directory's codebase.
+
+    Returns:
+        Dictionary with codebase analysis or None if not a code project
+    """
+    cwd = Path.cwd()
+
+    # Check if this looks like a code project
+    indicators = {
+        'package.json': 'Node.js/JavaScript',
+        'pyproject.toml': 'Python (Poetry)',
+        'requirements.txt': 'Python (pip)',
+        'Cargo.toml': 'Rust',
+        'go.mod': 'Go',
+        'pom.xml': 'Java (Maven)',
+        'build.gradle': 'Java/Kotlin (Gradle)',
+        'Gemfile': 'Ruby',
+        'composer.json': 'PHP',
+        '.csproj': 'C#/.NET',
+    }
+
+    detected_type = None
+    for file, lang in indicators.items():
+        if list(cwd.glob(f"**/{file}")):
+            detected_type = lang
+            break
+
+    if not detected_type:
+        return None
+
+    analysis = {
+        'project_type': detected_type,
+        'directory': str(cwd.name),
+        'files': []
+    }
+
+    # Count files by type
+    file_counts = {}
+    code_extensions = {
+        '.py': 'Python', '.js': 'JavaScript', '.ts': 'TypeScript',
+        '.jsx': 'React', '.tsx': 'React/TypeScript',
+        '.rs': 'Rust', '.go': 'Go', '.java': 'Java',
+        '.rb': 'Ruby', '.php': 'PHP', '.cs': 'C#',
+        '.cpp': 'C++', '.c': 'C', '.h': 'C/C++ Header',
+        '.vue': 'Vue', '.svelte': 'Svelte'
+    }
+
+    for ext, lang in code_extensions.items():
+        count = len(list(cwd.rglob(f"*{ext}")))
+        if count > 0:
+            file_counts[lang] = file_counts.get(lang, 0) + count
+
+    # Find README
+    readme = None
+    for readme_file in ['README.md', 'README.txt', 'README']:
+        readme_path = cwd / readme_file
+        if readme_path.exists():
+            try:
+                readme = readme_path.read_text()[:1000]  # First 1000 chars
+                break
+            except:
+                pass
+
+    # Find main entry points
+    entry_points = []
+    entry_files = [
+        'main.py', 'app.py', '__init__.py',
+        'index.js', 'server.js', 'app.js',
+        'main.go', 'main.rs', 'Main.java'
+    ]
+    for entry in entry_files:
+        if (cwd / entry).exists() or list(cwd.rglob(entry)):
+            entry_points.append(entry)
+
+    # Check for common directories
+    directories = {}
+    common_dirs = ['src', 'lib', 'app', 'components', 'routes', 'api', 'tests', 'docs']
+    for dir_name in common_dirs:
+        dir_path = cwd / dir_name
+        if dir_path.exists() and dir_path.is_dir():
+            file_count = len(list(dir_path.rglob('*.*')))
+            directories[dir_name] = file_count
+
+    # Build summary
+    summary_parts = [f"**Project**: {cwd.name}"]
+    summary_parts.append(f"**Type**: {detected_type}")
+
+    if file_counts:
+        files_summary = ", ".join([f"{count} {lang} files" for lang, count in sorted(file_counts.items(), key=lambda x: -x[1])[:3]])
+        summary_parts.append(f"**Files**: {files_summary}")
+
+    if directories:
+        dirs_summary = ", ".join([f"{name}/ ({count} files)" for name, count in directories.items()])
+        summary_parts.append(f"**Structure**: {dirs_summary}")
+
+    if entry_points:
+        summary_parts.append(f"**Entry Points**: {', '.join(entry_points)}")
+
+    analysis['summary'] = "\n".join(summary_parts)
+
+    # Build detailed analysis
+    detailed = f"""# Project: {cwd.name}
+Type: {detected_type}
+Location: {cwd}
+
+## File Statistics
+{chr(10).join([f"- {lang}: {count} files" for lang, count in sorted(file_counts.items(), key=lambda x: -x[1])])}
+
+## Directory Structure
+{chr(10).join([f"- {name}/: {count} files" for name, count in directories.items()])}
+
+## Entry Points
+{chr(10).join([f"- {ep}" for ep in entry_points]) if entry_points else "Not detected"}
+"""
+
+    if readme:
+        detailed += f"\n## README (excerpt)\n{readme}\n"
+
+    analysis['detailed_analysis'] = detailed
+    analysis['file_counts'] = file_counts
+    analysis['directories'] = directories
+    analysis['entry_points'] = entry_points
+
+    return analysis
 
 
 def simple_chat(api_key: str):
