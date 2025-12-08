@@ -146,7 +146,9 @@ class GenerationOrchestrator:
         self,
         project_id: str,
         tasks: List[Task],
-        project_context: str
+        project_context: str,
+        resume: bool = True,
+        force: bool = False
     ) -> Dict[str, GenerationResult]:
         """
         Generate code for all project tasks.
@@ -155,6 +157,8 @@ class GenerationOrchestrator:
             project_id: Project ID
             tasks: List of tasks to generate
             project_context: Project context/description
+            resume: Resume from previous build (skip completed tasks)
+            force: Force re-run all tasks (ignore completed state)
 
         Returns:
             Dictionary mapping task IDs to generation results
@@ -167,11 +171,43 @@ class GenerationOrchestrator:
         # Validate dependencies
         self._validate_dependencies(tasks)
 
+        # Load previous task state if resuming
+        previous_states = {}
+        if resume and not force:
+            previous_states = self._load_task_states(project_id)
+
         # Create task executions
-        executions = {
-            task.id: TaskExecution(task=task)
-            for task in tasks
-        }
+        executions = {}
+        skipped_count = 0
+        for task in tasks:
+            # Check if task was previously completed
+            if task.id in previous_states and not force:
+                prev_state = previous_states[task.id]
+
+                # Skip if completed successfully with generated files
+                if prev_state.status == 'completed' and prev_state.generated_files:
+                    logger.info(f"Skipping completed task {task.id}: {task.title}")
+
+                    # Create execution with previous result
+                    executions[task.id] = TaskExecution(
+                        task=task,
+                        status=TaskStatus.COMPLETED,
+                        result=GenerationResult(
+                            success=True,
+                            files=prev_state.generated_files,
+                            duration_seconds=prev_state.duration_seconds,
+                            error=None,
+                            metadata={"task_id": task.id, "resumed": True}
+                        )
+                    )
+                    skipped_count += 1
+                    continue
+
+            # Create fresh execution for new/failed tasks
+            executions[task.id] = TaskExecution(task=task)
+
+        if skipped_count > 0:
+            logger.info(f"Resuming build: {skipped_count} task(s) already completed, {len(tasks) - skipped_count} to run")
 
         # Execute tasks with progress tracking
         results = await self._execute_with_progress(
@@ -205,6 +241,23 @@ class GenerationOrchestrator:
                     )
 
         logger.debug("Task dependencies validated")
+
+    def _load_task_states(self, project_id: str) -> Dict[str, any]:
+        """
+        Load previous task states from state manager.
+
+        Args:
+            project_id: Project ID
+
+        Returns:
+            Dictionary mapping task IDs to TaskState objects
+        """
+        try:
+            task_states = self.state_manager.get_project_tasks(project_id)
+            return {state.id: state for state in task_states}
+        except Exception as e:
+            logger.warning(f"Could not load previous task states: {e}")
+            return {}
 
     async def _execute_with_progress(
         self,

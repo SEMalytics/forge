@@ -539,8 +539,14 @@ def decompose(description, tech_stack, project_id, save, visualize):
 @click.option('--backend', '-b', type=click.Choice(['codegen_api', 'claude_code']), help="Generator backend")
 @click.option('--parallel/--sequential', default=True, help="Enable parallel execution")
 @click.option('--max-parallel', default=3, help="Maximum parallel tasks")
-def build(project_id, backend, parallel, max_parallel):
-    """Build project from task plan"""
+@click.option('--resume/--no-resume', default=True, help="Resume from previous build (skip completed tasks)")
+@click.option('--force', is_flag=True, help="Force re-run all tasks (ignore completed state)")
+def build(project_id, backend, parallel, max_parallel, resume, force):
+    """Build project from task plan
+
+    By default, resumes from previous builds and skips completed tasks.
+    Use --no-resume to start fresh, or --force to re-run everything.
+    """
     import os
     import asyncio
     from forge.generators.factory import GeneratorFactory, GeneratorBackend
@@ -630,7 +636,9 @@ def build(project_id, backend, parallel, max_parallel):
             return await orchestrator.generate_project(
                 project_id=project_id,
                 tasks=tasks,
-                project_context=project_context
+                project_context=project_context,
+                resume=resume and not force,  # Resume unless force is set
+                force=force
             )
 
         results = asyncio.run(run_generation())
