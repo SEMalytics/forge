@@ -81,7 +81,7 @@ class GeneratorFactory:
         generator = CodeGenAPIGenerator(
             api_key=api_key,
             org_id=kwargs.get('org_id'),  # Optional
-            base_url=kwargs.get('base_url', "https://api.codegen.ai/v1"),
+            base_url=kwargs.get('base_url', "https://api.codegen.com/v1"),
             timeout=kwargs.get('timeout', 300),
             max_retries=kwargs.get('max_retries', 3)
         )

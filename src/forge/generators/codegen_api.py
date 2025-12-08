@@ -40,7 +40,7 @@ class CodeGenAPIGenerator(CodeGenerator):
         self,
         api_key: str,
         org_id: Optional[str] = None,
-        base_url: str = "https://api.codegen.ai/v1",
+        base_url: str = "https://api.codegen.com/v1",
         timeout: int = 300,
         max_retries: int = 3
     ):
