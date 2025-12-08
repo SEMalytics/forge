@@ -249,11 +249,11 @@ class CodeGenClient:
             # Note: Exact status field names may vary - adjust based on actual API
             current_status = status.get("status", "").lower()
 
-            if current_status in ["completed", "success", "done"]:
+            if current_status in ["complete", "completed", "success", "done"]:
                 logger.info("Agent run completed successfully")
                 return status
 
-            if current_status in ["failed", "error"]:
+            if current_status in ["failed", "error", "failure"]:
                 error_msg = status.get("error", "Unknown error")
                 raise CodeGenError(f"Agent run failed: {error_msg}")
 
