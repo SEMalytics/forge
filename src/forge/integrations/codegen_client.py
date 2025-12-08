@@ -102,6 +102,50 @@ class CodeGenClient:
         except Exception as e:
             raise CodeGenError(f"Failed to fetch organization ID: {e}")
 
+    def _validate_agent_payload(
+        self,
+        payload: Dict[str, Any],
+        repository_id: Optional[int]
+    ):
+        """
+        Validate agent run payload for common configuration issues.
+
+        Args:
+            payload: The request payload to validate
+            repository_id: The repository ID that was requested
+
+        Raises:
+            CodeGenError: If payload has critical issues
+        """
+        # Check if repo_id is set but agent_type is missing
+        if "repo_id" in payload and "agent_type" not in payload:
+            logger.error("⚠️ CRITICAL CONFIGURATION ERROR!")
+            logger.error("  repo_id is set but agent_type is missing")
+            logger.error("  This will cause the agent to run WITHOUT repository context")
+            logger.error("")
+            logger.error("  Fix: Ensure agent_type='codegen' is set when using repo_id")
+            raise CodeGenError(
+                "Invalid agent configuration: repo_id requires agent_type='codegen'. "
+                "Without agent_type, the API will ignore repo_id and create agents without "
+                "repository context, causing builds to fail."
+            )
+
+        # Check if agent_type is set to something other than 'codegen' when using repo_id
+        if "repo_id" in payload and payload.get("agent_type") not in ["codegen", None]:
+            agent_type = payload.get("agent_type")
+            logger.warning(f"⚠️ Using agent_type='{agent_type}' with repo_id may not work")
+            logger.warning(f"   Recommended: agent_type='codegen' for repository-scoped operations")
+            logger.warning(f"   Note: agent_type='claude_code' does NOT support repo_id via API")
+
+        # Validate repo_id is an integer if present
+        if "repo_id" in payload:
+            repo_id_value = payload["repo_id"]
+            if not isinstance(repo_id_value, int):
+                raise CodeGenError(
+                    f"Invalid repo_id type: {type(repo_id_value).__name__}. "
+                    f"Expected int, got {repo_id_value}"
+                )
+
     async def create_agent_run(
         self,
         prompt: str,
@@ -148,6 +192,9 @@ class CodeGenClient:
 
             logger.info(f"API payload: {payload}")
 
+            # Validate payload for common issues
+            self._validate_agent_payload(payload, repository_id)
+
             # Handle image upload case vs JSON-only
             async with httpx.AsyncClient(timeout=30.0) as client:
                 if image_path and image_path.exists():
@@ -184,10 +231,32 @@ class CodeGenClient:
 
             # Check if repository was actually set in the response
             response_repo_id = result.get("repository_id") or result.get("repo_id")
-            if response_repo_id:
+
+            if repository_id and not response_repo_id:
+                # We requested a repo but API didn't set it - this is a problem!
+                logger.error(f"⚠️ CRITICAL: Agent run {agent_run_id} created WITHOUT repository context!")
+                logger.error(f"   Requested repo_id: {repository_id}")
+                logger.error(f"   Payload sent: {payload}")
+                logger.error(f"   API response: {result}")
+                logger.error("")
+                logger.error("This means the agent will NOT have access to your repository and will NOT create PRs.")
+                logger.error("")
+                logger.error("Troubleshooting:")
+                logger.error("1. Verify agent_type='codegen' is in the payload (required for repo context)")
+                logger.error("2. Check that the repository ID is valid and accessible")
+                logger.error("3. Ensure GitHub App is installed: https://github.com/apps/codegen-sh")
+                logger.error("4. Verify repository setup status is not NOT_SETUP")
+                logger.error("")
+                raise CodeGenError(
+                    f"Agent run {agent_run_id} was created without repository context despite "
+                    f"requesting repo_id={repository_id}. The agent will not generate code in "
+                    f"your repository. Please check the troubleshooting steps in the logs above."
+                )
+            elif response_repo_id:
                 logger.info(f"✓ Agent run {agent_run_id} created with repository ID: {response_repo_id}")
             else:
-                logger.warning(f"⚠ Agent run {agent_run_id} created WITHOUT repository context (API may have rejected repo_id)")
+                # No repo requested, no repo set - that's expected
+                logger.info(f"Agent run {agent_run_id} created without repository context (as expected)")
 
             return agent_run_id
 

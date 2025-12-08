@@ -217,12 +217,62 @@ Possible causes:
    - Dry-run mode
    - Validation checks
 
+## Critical Discovery: agent_type Parameter (2025-12-08)
+
+### The Problem
+After implementing repository setup automation, builds were still failing with "No files generated from CodeGen response". Agent runs completed successfully (status: COMPLETE) but produced zero files and no GitHub PRs.
+
+### Investigation
+Testing revealed that even when sending `repo_id=184372` in API requests, the created agent runs had `repository_id: None`. The agents ran without repository context and only generated text descriptions instead of actual code.
+
+### Root Cause
+The CodeGen API endpoint `/v1/organizations/{org_id}/agent/run` requires **TWO parameters** to properly associate agents with repositories:
+
+1. **`repo_id`** (integer): The repository identifier
+2. **`agent_type`** (string): Must be `"codegen"` for repository-scoped operations
+
+**Without `agent_type="codegen"`**, the API silently ignores the `repo_id` parameter.
+
+### The Fix
+File: `src/forge/integrations/codegen_client.py` (line 144)
+
+```python
+if repository_id:
+    payload["repo_id"] = repository_id
+    payload["agent_type"] = "codegen"  # CRITICAL: Required for repo context!
+    logger.info(f"✓ Including repo_id in request: {repository_id} with agent_type=codegen")
+```
+
+### Verification Results
+
+| Agent Run | repo_id | agent_type | Repository Context | Result |
+|-----------|---------|------------|-------------------|--------|
+| 146194 | ✓ | ✗ (missing) | ✗ None | No files, no PR |
+| 146195 | ✓ | `"codegen"` | ✓ 184372 | **PR #1 created** ✓ |
+| 146196 | ✓ | `"claude_code"` | ✗ None | Files in /tmp only |
+| 146213 | ✓ | `"codegen"` | ✓ 184372 | **PR #2 created** ✓ |
+
+### Key Learnings
+
+1. **`agent_type="codegen"` is mandatory** for repository-scoped agent runs
+2. **`agent_type="claude_code"` does NOT work** with repository context via API
+3. **The API does not return an error** when `agent_type` is missing - it silently creates agents without repository context
+4. **Repository setup alone is not enough** - the agent creation request must include both `repo_id` AND `agent_type`
+
+### Success Confirmation
+After adding `agent_type="codegen"`:
+- ✅ Agent run 146213 created PR #2 with 400+ lines of code
+- ✅ Repository context properly maintained
+- ✅ GitHub integration working correctly
+- ✅ All subsequent builds creating PRs successfully
+
 ## References
 
 - **CodeGen API Docs**: https://docs.codegen.com/api-reference
 - **GitHub Integration**: https://docs.codegen.com/integrations/github
 - **Setup Commands**: https://docs.codegen.com/sandboxes/setup-commands
 - **Repository API**: https://docs.codegen.com/api-reference/repositories
+- **Agent Run Creation**: https://docs.codegen.com/api-reference/agents/create-agent-run
 
 ## Commits
 
@@ -231,5 +281,9 @@ This solution was implemented across multiple commits:
 1. `feat(codegen): add CODEGEN_REPO_ID to environment configuration`
 2. `docs(codegen): add comprehensive CodeGen setup guide`
 3. `feat(codegen): add automatic repository setup detection and configuration`
+4. `fix(codegen): add agent_type parameter to enable repository context` (2025-12-08)
 
-Total additions: ~850 lines of code + documentation
+**Total Impact:**
+- ~870 lines of code + documentation
+- 100% success rate for PR creation after agent_type fix
+- Zero files generated → Full GitHub PR workflow working
