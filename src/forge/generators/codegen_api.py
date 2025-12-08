@@ -9,12 +9,6 @@ import asyncio
 import time
 import re
 from typing import Dict, List, Optional, Any
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_exponential,
-    retry_if_exception_type
-)
 
 from forge.generators.base import (
     CodeGenerator,
@@ -83,11 +77,6 @@ class CodeGenAPIGenerator(CodeGenerator):
 
         return headers
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type(httpx.HTTPError)
-    )
     async def generate(self, context: GenerationContext) -> GenerationResult:
         """
         Generate code using CodeGen agent API.
@@ -375,7 +364,6 @@ class CodeGenAPIGenerator(CodeGenerator):
 
     def __del__(self):
         """Cleanup on deletion"""
-        try:
-            asyncio.create_task(self.close())
-        except:
-            pass
+        # Don't try to close async client in __del__ as there may be no event loop
+        # The client will be cleaned up by garbage collection
+        pass
