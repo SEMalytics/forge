@@ -553,9 +553,13 @@ def build(project_id, backend, parallel, max_parallel, resume, force):
     from forge.layers.generation import GenerationOrchestrator
     from forge.layers.decomposition import TaskDecomposer
     from forge.core.state_manager import StateManager
+    from forge.core.config import ForgeConfig
 
     try:
         console.print("\n[bold blue]⚒ Forge Build System[/bold blue]\n")
+
+        # Load configuration
+        config = ForgeConfig.load()
 
         # Load project
         state = StateManager()
@@ -612,7 +616,8 @@ def build(project_id, backend, parallel, max_parallel, resume, force):
             generator = GeneratorFactory.create(
                 backend_enum,
                 api_key=api_key,
-                org_id=os.getenv('CODEGEN_ORG_ID')
+                org_id=os.getenv('CODEGEN_ORG_ID'),
+                timeout=config.generator.timeout  # Pass timeout from config
             )
         else:
             generator = GeneratorFactory.create(backend_enum)
