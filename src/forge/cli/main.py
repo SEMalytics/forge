@@ -64,17 +64,18 @@ def doctor():
         else:
             print_warning(f"{dep} not found (optional)")
 
-    # Check KF patterns
-    patterns_dir = Path("../knowledgeforge-patterns")
+    # Check patterns directory
+    # Try to find patterns directory relative to the repository root
+    patterns_dir = Path(__file__).parent.parent.parent.parent / "patterns"
     if patterns_dir.exists():
         count = len(list(patterns_dir.glob("*.md")))
         if count > 0:
-            print_success(f"KnowledgeForge patterns ({count} files)")
+            print_success(f"Pattern library ({count} files)")
         else:
             print_warning(f"No .md files found in {patterns_dir}")
     else:
-        print_error(f"KnowledgeForge patterns not found at {patterns_dir}")
-        print_info("Create directory and add patterns: mkdir ../knowledgeforge-patterns")
+        print_error(f"Patterns directory not found at {patterns_dir}")
+        print_info("Patterns should be in the repository at ./patterns/")
 
     # Check CE plugin
     ce_dir = Path("../compound-engineering")
