@@ -90,7 +90,7 @@ class CodeGenAPIGenerator(CodeGenerator):
     )
     async def generate(self, context: GenerationContext) -> GenerationResult:
         """
-        Generate code using CodeGen API.
+        Generate code using CodeGen agent API.
 
         Args:
             context: Generation context
@@ -112,47 +112,73 @@ class CodeGenAPIGenerator(CodeGenerator):
             logger.info(f"Generating code for task {context.task_id}")
             logger.debug(f"Prompt length: {len(prompt)} chars")
 
-            # Make API request
-            response = await self.client.post(
-                f"{self.base_url}/generate",
-                json={
-                    "prompt": prompt,
-                    "max_tokens": 4000,
-                    "temperature": 0.2,
-                    "stop": ["```\n\n", "---END---"]
-                }
+            # Use CodeGen agent run API
+            from forge.integrations.codegen_client import CodeGenClient, CodeGenError
+
+            codegen_client = CodeGenClient(
+                api_token=self.api_key,
+                org_id=self.org_id,
+                timeout=self.timeout
             )
 
-            response.raise_for_status()
-            data = response.json()
-
-            # Parse generated code
-            generated_text = data.get("completion", data.get("text", ""))
-            files = self._parse_files(generated_text)
+            # Create agent run and wait for completion
+            result_data = await codegen_client.generate_code(
+                prompt=prompt,
+                repository_id=None,  # No repository context for now
+                on_progress=lambda status: logger.debug(f"CodeGen status: {status.get('status')}")
+            )
 
             duration = time.time() - start_time
 
+            # Extract files from CodeGen result
+            # CodeGen may return files in different formats depending on the agent
+            files = {}
+
+            # Try to extract files from the result
+            if isinstance(result_data, dict):
+                # Check for files in common response fields
+                if "files" in result_data:
+                    for file_info in result_data["files"]:
+                        path = file_info.get("path") or file_info.get("filepath")
+                        content = file_info.get("content") or file_info.get("code")
+                        if path and content:
+                            files[path] = content
+
+                # Check for output field
+                if "output" in result_data and isinstance(result_data["output"], dict):
+                    files.update(result_data["output"])
+
+                # If no files found, try to parse from generated text
+                if not files and "generated_text" in result_data:
+                    files = self._parse_files(result_data["generated_text"])
+
             if not files:
-                raise GeneratorError("No files generated from API response")
+                # Fallback: treat entire result as text and parse
+                result_text = str(result_data)
+                files = self._parse_files(result_text)
+
+            if not files:
+                logger.warning(f"No files generated from CodeGen response for task {context.task_id}")
+                logger.debug(f"CodeGen result: {result_data}")
 
             result = GenerationResult(
-                success=True,
+                success=len(files) > 0,
                 files=files,
                 duration_seconds=duration,
-                tokens_used=data.get("usage", {}).get("total_tokens"),
                 metadata={
                     "task_id": context.task_id,
-                    "model": data.get("model"),
-                    "backend": "codegen_api"
+                    "backend": "codegen_api",
+                    "agent_run_id": result_data.get("id") or result_data.get("agent_run_id"),
+                    "codegen_result": result_data
                 }
             )
 
             logger.info(f"Generated {len(files)} files in {duration:.1f}s")
             return result
 
-        except httpx.HTTPError as e:
+        except CodeGenError as e:
             duration = time.time() - start_time
-            error_msg = f"API request failed: {e}"
+            error_msg = f"CodeGen API error: {e}"
             logger.error(error_msg)
 
             return GenerationResult(
