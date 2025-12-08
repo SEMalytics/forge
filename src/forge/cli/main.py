@@ -77,12 +77,12 @@ def doctor():
         print_error(f"Patterns directory not found at {patterns_dir}")
         print_info("Patterns should be in the repository at ./patterns/")
 
-    # Check CE plugin
+    # Check CE plugin (optional - Forge has built-in CE-style planning)
     ce_dir = Path("../compound-engineering")
     if ce_dir.exists():
-        print_success("Compound Engineering plugin")
+        print_success("Compound Engineering plugin (external)")
     else:
-        print_warning("Compound Engineering plugin not found (optional)")
+        print_info("Using built-in CE-style planning (external plugin not required)")
 
     # Check Forge directories
     forge_dir = Path(".forge")
