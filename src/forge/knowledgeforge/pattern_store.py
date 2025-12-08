@@ -3,7 +3,7 @@ Hybrid pattern storage:
 - SQLite with FTS5 for fast keyword search
 - Sentence transformers for semantic search
 - LRU cache for frequently accessed patterns
-- Indexes all .md files from ../knowledgeforge-patterns/
+- Indexes all .md files from patterns/ directory
 """
 
 import sqlite3
@@ -26,10 +26,15 @@ class PatternStore:
 
         Args:
             db_path: Path to SQLite database
-            patterns_dir: Directory containing KF pattern files
+            patterns_dir: Directory containing pattern files
         """
         self.db_path = db_path
-        self.patterns_dir = Path(patterns_dir or "../knowledgeforge-patterns")
+        # Default to patterns/ directory in the Forge repository
+        if patterns_dir is None:
+            # Try to find patterns directory relative to this file
+            repo_root = Path(__file__).parent.parent.parent.parent
+            patterns_dir = repo_root / "patterns"
+        self.patterns_dir = Path(patterns_dir)
 
         # Ensure directory exists
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
@@ -109,15 +114,15 @@ class PatternStore:
         return count == 0
 
     def _index_patterns(self):
-        """Index all KF pattern files"""
+        """Index all pattern files from patterns directory"""
         if not self.patterns_dir.exists():
             logger.warning(
-                f"KnowledgeForge patterns not found at {self.patterns_dir}\n"
-                "Pattern store will be empty. Copy patterns to ../knowledgeforge-patterns/"
+                f"Patterns directory not found at {self.patterns_dir}\n"
+                "Pattern store will be empty. Patterns should be in the 'patterns/' directory."
             )
             return
 
-        logger.info("Indexing KnowledgeForge patterns...")
+        logger.info(f"Indexing patterns from {self.patterns_dir}...")
 
         pattern_files = list(self.patterns_dir.glob("*.md"))
         if not pattern_files:
