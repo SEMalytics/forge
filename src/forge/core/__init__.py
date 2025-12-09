@@ -2,7 +2,7 @@
 Core components for Forge
 
 Provides configuration, state management, orchestration, context handling,
-and streaming output support.
+streaming output support, and caching for incremental builds.
 """
 
 from forge.core.config import ForgeConfig
@@ -18,6 +18,16 @@ from forge.core.streaming import (
     ConsoleStreamHandler,
     BufferStreamHandler,
     CallbackStreamHandler
+)
+from forge.core.cache import (
+    CacheError,
+    CacheStatus,
+    CacheEntry,
+    CacheLookupResult,
+    CacheKeyBuilder,
+    GenerationCache,
+    IncrementalBuildDetector,
+    CachedGenerator
 )
 
 __all__ = [
@@ -40,4 +50,13 @@ __all__ = [
     'ConsoleStreamHandler',
     'BufferStreamHandler',
     'CallbackStreamHandler',
+    # Cache
+    'CacheError',
+    'CacheStatus',
+    'CacheEntry',
+    'CacheLookupResult',
+    'CacheKeyBuilder',
+    'GenerationCache',
+    'IncrementalBuildDetector',
+    'CachedGenerator',
 ]

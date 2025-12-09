@@ -2450,6 +2450,329 @@ def context_stats():
         sys.exit(1)
 
 
+@cli.group()
+def cache():
+    """Manage generation cache for incremental builds
+
+    The cache stores generated code to avoid regenerating unchanged tasks.
+    Use these commands to inspect, manage, and optimize the cache.
+
+    Example:
+        forge cache stats
+        forge cache list
+        forge cache clear
+    """
+    pass
+
+
+@cache.command('stats')
+def cache_stats():
+    """Show cache statistics
+
+    Displays cache usage statistics including hit rate, disk usage,
+    and entry counts.
+
+    Example:
+        forge cache stats
+    """
+    from forge.core.cache import GenerationCache
+    from rich.panel import Panel
+    from rich.table import Table
+
+    try:
+        cache_instance = GenerationCache()
+        stats = cache_instance.get_stats()
+
+        console.print()
+        console.print(Panel(
+            f"[bold]Entries:[/bold] {stats['entries']} / {stats['max_entries']}\n"
+            f"[bold]Hit Rate:[/bold] {stats['hit_rate']:.1%}\n"
+            f"[bold]Hits:[/bold] {stats['hits']}  [bold]Misses:[/bold] {stats['misses']}\n"
+            f"[bold]Disk Usage:[/bold] {stats['disk_usage_mb']:.2f} MB / {stats['max_size_mb']} MB\n"
+            f"[bold]Evictions:[/bold] {stats['evictions']}  [bold]Invalidations:[/bold] {stats['invalidations']}",
+            title="[bold cyan]Cache Statistics[/bold cyan]",
+            border_style="blue"
+        ))
+        console.print()
+
+    except Exception as e:
+        print_error(f"Failed to get cache stats: {e}")
+        sys.exit(1)
+
+
+@cache.command('list')
+@click.option('--task-id', '-t', help="Filter by task ID")
+@click.option('--limit', '-n', default=20, help="Maximum entries to show")
+@click.option('--json', 'output_json', is_flag=True, help="Output as JSON")
+def cache_list(task_id, limit, output_json):
+    """List cache entries
+
+    Shows cached generation results with metadata.
+
+    Example:
+        forge cache list
+        forge cache list --task-id my-task
+        forge cache list --json
+    """
+    from forge.core.cache import GenerationCache
+    from rich.table import Table
+    import json as json_module
+
+    try:
+        cache_instance = GenerationCache()
+        entries = cache_instance.list_entries(task_id=task_id, limit=limit)
+
+        if output_json:
+            data = [e.to_dict() for e in entries]
+            console.print(json_module.dumps(data, indent=2, default=str))
+            return
+
+        if not entries:
+            console.print("\n[yellow]No cache entries found.[/yellow]\n")
+            return
+
+        console.print()
+        table = Table(title="Cache Entries", border_style="blue")
+        table.add_column("Key", style="cyan", width=14)
+        table.add_column("Task ID")
+        table.add_column("Files", justify="right")
+        table.add_column("Hits", justify="right")
+        table.add_column("Age", style="dim")
+        table.add_column("Status")
+
+        for entry in entries:
+            age_hours = entry.age_seconds / 3600
+            if age_hours < 1:
+                age_str = f"{entry.age_seconds / 60:.0f}m"
+            elif age_hours < 24:
+                age_str = f"{age_hours:.0f}h"
+            else:
+                age_str = f"{age_hours / 24:.0f}d"
+
+            status = "[red]expired[/red]" if entry.is_expired else "[green]valid[/green]"
+
+            table.add_row(
+                entry.key[:14],
+                entry.task_id[:20] if len(entry.task_id) > 20 else entry.task_id,
+                str(len(entry.files)),
+                str(entry.hit_count),
+                age_str,
+                status
+            )
+
+        console.print(table)
+        console.print()
+
+    except Exception as e:
+        print_error(f"Failed to list cache: {e}")
+        sys.exit(1)
+
+
+@cache.command('show')
+@click.argument('key')
+def cache_show(key):
+    """Show details of a cache entry
+
+    Displays full details of a cached entry including files.
+
+    Example:
+        forge cache show my-task-abc123
+    """
+    from forge.core.cache import GenerationCache
+    from rich.panel import Panel
+    from rich.syntax import Syntax
+
+    try:
+        cache_instance = GenerationCache()
+
+        # Find entry by key prefix
+        entries = cache_instance.list_entries()
+        entry = None
+        for e in entries:
+            if e.key.startswith(key):
+                entry = e
+                break
+
+        if not entry:
+            print_error(f"Cache entry not found: {key}")
+            sys.exit(1)
+
+        console.print()
+        console.print(Panel(
+            f"[bold]Key:[/bold] {entry.key}\n"
+            f"[bold]Task ID:[/bold] {entry.task_id}\n"
+            f"[bold]Content Hash:[/bold] {entry.content_hash}\n"
+            f"[bold]Dependency Hash:[/bold] {entry.dependency_hash}\n"
+            f"[bold]Files:[/bold] {len(entry.files)}\n"
+            f"[bold]Hit Count:[/bold] {entry.hit_count}\n"
+            f"[bold]Created:[/bold] {entry.created_at}\n"
+            f"[bold]Accessed:[/bold] {entry.accessed_at}\n"
+            f"[bold]TTL:[/bold] {entry.ttl_seconds}s\n"
+            f"[bold]Expired:[/bold] {entry.is_expired}",
+            title=f"[bold cyan]Cache Entry: {entry.key[:20]}...[/bold cyan]",
+            border_style="blue"
+        ))
+
+        # Show files
+        if entry.files:
+            console.print("\n[bold]Cached Files:[/bold]")
+            for filepath in sorted(entry.files.keys()):
+                size = len(entry.files[filepath])
+                console.print(f"  [cyan]{filepath}[/cyan] ({size} bytes)")
+
+        console.print()
+
+    except Exception as e:
+        print_error(f"Failed to show cache entry: {e}")
+        sys.exit(1)
+
+
+@cache.command('invalidate')
+@click.argument('key_or_task')
+@click.option('--by-task', '-t', is_flag=True, help="Invalidate by task ID")
+@click.option('--by-dependency', '-d', is_flag=True, help="Invalidate dependents of task")
+def cache_invalidate(key_or_task, by_task, by_dependency):
+    """Invalidate cache entries
+
+    Removes specific cache entries or all entries for a task.
+
+    Example:
+        forge cache invalidate my-task-abc123
+        forge cache invalidate --by-task my-task
+        forge cache invalidate --by-dependency upstream-task
+    """
+    from forge.core.cache import GenerationCache
+
+    try:
+        cache_instance = GenerationCache()
+
+        if by_dependency:
+            count = cache_instance.invalidate_by_dependency(key_or_task)
+            print_success(f"Invalidated {count} dependent entries")
+        elif by_task:
+            count = cache_instance.invalidate_by_task(key_or_task)
+            print_success(f"Invalidated {count} entries for task {key_or_task}")
+        else:
+            # Try exact key or prefix match
+            entries = cache_instance.list_entries()
+            found = False
+            for entry in entries:
+                if entry.key.startswith(key_or_task):
+                    cache_instance.invalidate(entry.key)
+                    print_success(f"Invalidated: {entry.key}")
+                    found = True
+                    break
+
+            if not found:
+                print_warning(f"No cache entry found matching: {key_or_task}")
+
+    except Exception as e:
+        print_error(f"Failed to invalidate cache: {e}")
+        sys.exit(1)
+
+
+@cache.command('clear')
+@click.option('--expired', is_flag=True, help="Only clear expired entries")
+@click.option('--force', '-f', is_flag=True, help="Skip confirmation")
+def cache_clear(expired, force):
+    """Clear cache entries
+
+    Clears all cache entries or just expired ones.
+
+    Example:
+        forge cache clear
+        forge cache clear --expired
+        forge cache clear --force
+    """
+    from forge.core.cache import GenerationCache
+
+    try:
+        cache_instance = GenerationCache()
+
+        if expired:
+            count = cache_instance.cleanup_expired()
+            print_success(f"Cleared {count} expired entries")
+        else:
+            stats = cache_instance.get_stats()
+
+            if not force and stats['entries'] > 0:
+                console.print(f"\n[yellow]Will clear {stats['entries']} cache entries[/yellow]")
+                console.print(f"[dim]Disk usage: {stats['disk_usage_mb']:.2f} MB[/dim]")
+                if not click.confirm("Continue?"):
+                    console.print("[dim]Cancelled[/dim]")
+                    return
+
+            count = cache_instance.clear()
+            print_success(f"Cleared {count} cache entries")
+
+    except Exception as e:
+        print_error(f"Failed to clear cache: {e}")
+        sys.exit(1)
+
+
+@cache.command('warm')
+@click.option('--project-id', '-p', required=True, help="Project to warm cache for")
+def cache_warm(project_id):
+    """Pre-warm cache for a project
+
+    Analyzes project and pre-generates cache entries for unchanged tasks.
+
+    Example:
+        forge cache warm --project-id my-project
+    """
+    from forge.core.cache import GenerationCache, IncrementalBuildDetector
+    from forge.core.state_manager import StateManager
+
+    try:
+        cache_instance = GenerationCache()
+        state_manager = StateManager()
+        detector = IncrementalBuildDetector(cache_instance)
+
+        # Load project task plan
+        try:
+            task_plan = state_manager.load_task_plan(project_id)
+        except Exception:
+            print_error(f"No task plan found for project: {project_id}")
+            sys.exit(1)
+
+        # Build dependency graph
+        dep_graph = {}
+        for task in task_plan.tasks:
+            task_id = task.id if hasattr(task, 'id') else task.get('id', '')
+            deps = task.dependencies if hasattr(task, 'dependencies') else task.get('dependencies', [])
+            dep_graph[task_id] = deps
+
+        # Detect what needs rebuilding
+        tasks_data = [
+            {
+                "id": t.id if hasattr(t, 'id') else t.get('id'),
+                "specification": t.specification if hasattr(t, 'specification') else t.get('specification', ''),
+                "project_context": "",
+                "tech_stack": task_plan.tech_stack if hasattr(task_plan, 'tech_stack') else [],
+                "dependencies": t.dependencies if hasattr(t, 'dependencies') else t.get('dependencies', [])
+            }
+            for t in task_plan.tasks
+        ]
+
+        changes = detector.detect_changes(tasks_data, dep_graph)
+
+        cached = len(task_plan.tasks) - len(changes)
+        console.print(f"\n[bold]Cache Status for {project_id}:[/bold]")
+        console.print(f"  [green]Cached:[/green] {cached} tasks")
+        console.print(f"  [yellow]Need rebuild:[/yellow] {len(changes)} tasks")
+
+        if changes:
+            console.print("\n[bold]Tasks requiring rebuild:[/bold]")
+            for task_id, reason in changes.items():
+                console.print(f"  [yellow]•[/yellow] {task_id}: {reason}")
+
+        console.print()
+
+    except Exception as e:
+        print_error(f"Failed to warm cache: {e}")
+        sys.exit(1)
+
+
 @cli.command()
 @click.option('--project-id', '-p', help="Show stats for specific project")
 def stats(project_id):
