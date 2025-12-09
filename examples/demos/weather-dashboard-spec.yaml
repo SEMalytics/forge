@@ -1,0 +1,107 @@
+# Forge Demo: Weather Dashboard
+# Repository: github.com/internexio/forge-demo-weather-dashboard
+
+project:
+  name: weather-dashboard-demo
+  description: |
+    A weather dashboard demonstrating API integration, data visualization,
+    and caching strategies. Perfect for showcasing Forge's ability to handle
+    external dependencies and data processing.
+
+    Components:
+    - Python backend with OpenWeatherMap API integration
+    - Data visualization with charts
+    - Redis caching layer
+    - Responsive web interface
+
+tech_stack:
+  - python
+  - fastapi
+  - redis
+  - chart.js
+  - html
+  - css
+  - docker
+
+tasks:
+  - title: API Integration Layer
+    description: |
+      Create weather API integration:
+      - OpenWeatherMap API client
+      - Weather data fetching and parsing
+      - Error handling and retry logic
+      - Rate limiting
+      - Environment variable configuration
+
+    files:
+      - backend/api/weather_client.py
+      - backend/api/models.py
+      - backend/config.py
+      - backend/requirements.txt
+
+  - title: Caching & Data Processing
+    description: |
+      Implement caching and data processing:
+      - Redis cache integration
+      - Cache strategies (TTL, invalidation)
+      - Data transformation and aggregation
+      - Historical data storage
+
+    files:
+      - backend/cache/redis_client.py
+      - backend/services/weather_service.py
+      - backend/utils/data_processor.py
+
+  - title: Web Interface & Visualization
+    description: |
+      Create dashboard frontend:
+      - Responsive HTML/CSS layout
+      - Chart.js weather visualizations (temperature, humidity, wind)
+      - Current conditions display
+      - 5-day forecast view
+      - City search functionality
+
+    files:
+      - frontend/index.html
+      - frontend/css/styles.css
+      - frontend/js/app.js
+      - frontend/js/charts.js
+
+  - title: Backend API Server
+    description: |
+      Create FastAPI server:
+      - RESTful endpoints for weather data
+      - Query parameters for city/coordinates
+      - Response caching headers
+      - API documentation with OpenAPI
+
+    files:
+      - backend/main.py
+      - backend/routers/weather.py
+      - backend/routers/forecast.py
+
+  - title: Deployment Configuration
+    description: |
+      Setup deployment files:
+      - Docker Compose with Redis + Backend + Frontend
+      - Environment variable templates
+      - Setup instructions
+      - Example .env file
+
+    files:
+      - docker-compose.yml
+      - Dockerfile
+      - .env.example
+      - README.md
+
+estimation:
+  total_tasks: 5
+  parallel_capable: true
+  estimated_duration: "25-35 minutes"
+
+demo_talking_points:
+  - "Five parallel tasks showing complex dependency management"
+  - "External API integration with real-world error handling"
+  - "Caching layer demonstrates performance optimization"
+  - "Data visualization shows frontend capabilities"
+  - "Realistic production-ready architecture"

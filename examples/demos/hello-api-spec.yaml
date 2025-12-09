@@ -1,0 +1,47 @@
+# Forge Quick Demo: Hello World API
+# Repository: github.com/internexio/forge-demo-hello-api
+# Duration: ~3-5 minutes
+
+project:
+  name: hello-api-demo
+  description: |
+    Ultra-simple "Hello World" API to demonstrate Forge's speed.
+    Single task, minimal complexity, perfect for quick demos.
+
+    Shows:
+    - FastAPI endpoint creation
+    - Basic routing
+    - JSON responses
+    - Quick deployment setup
+
+tech_stack:
+  - python
+  - fastapi
+
+tasks:
+  - title: Hello World API
+    description: |
+      Create a minimal FastAPI application:
+      - Single GET endpoint at /hello that returns {"message": "Hello, World!"}
+      - GET endpoint at /health for health checks
+      - FastAPI app with CORS middleware
+      - Uvicorn configuration
+      - Basic README with run instructions
+      - requirements.txt with dependencies
+
+    files:
+      - main.py
+      - requirements.txt
+      - README.md
+      - .gitignore
+
+estimation:
+  total_tasks: 1
+  parallel_capable: false
+  estimated_duration: "3-5 minutes"
+
+demo_talking_points:
+  - "Single task - fastest possible demo"
+  - "Shows Forge can generate even simple projects correctly"
+  - "Great for 'wow' factor - complete API in minutes"
+  - "Perfect for testing Forge is working"

@@ -1,0 +1,91 @@
+# Forge Demo: Todo App
+# Repository: github.com/internexio/forge-demo-todo-app
+
+project:
+  name: todo-app-demo
+  description: |
+    A simple but complete Todo application demonstrating Forge's ability to
+    generate multi-component projects in parallel.
+
+    Components:
+    - FastAPI backend with SQLite database
+    - React frontend with modern UI
+    - Docker configuration for easy deployment
+    - Comprehensive test suite
+
+tech_stack:
+  - python
+  - fastapi
+  - sqlite
+  - react
+  - typescript
+  - docker
+
+tasks:
+  - title: Backend API Setup
+    description: |
+      Create FastAPI backend with the following features:
+      - SQLite database with SQLAlchemy ORM
+      - Todo CRUD endpoints (Create, Read, Update, Delete)
+      - Pydantic models for validation
+      - CORS middleware for frontend integration
+      - Health check endpoint
+
+    files:
+      - backend/main.py
+      - backend/models.py
+      - backend/database.py
+      - backend/schemas.py
+      - backend/requirements.txt
+
+  - title: Frontend React App
+    description: |
+      Create React frontend with:
+      - Modern component-based architecture
+      - Todo list view with add/edit/delete functionality
+      - API integration with fetch/axios
+      - Basic styling with CSS or Tailwind
+      - TypeScript for type safety
+
+    files:
+      - frontend/src/App.tsx
+      - frontend/src/components/TodoList.tsx
+      - frontend/src/components/TodoItem.tsx
+      - frontend/src/api/todos.ts
+      - frontend/package.json
+
+  - title: Testing Suite
+    description: |
+      Create comprehensive tests:
+      - Backend: pytest tests for all API endpoints
+      - Frontend: Jest/React Testing Library component tests
+      - Integration tests for full workflow
+
+    files:
+      - backend/tests/test_api.py
+      - frontend/src/__tests__/App.test.tsx
+
+  - title: Docker & Deployment
+    description: |
+      Create Docker configuration:
+      - Multi-stage Dockerfile for backend
+      - Dockerfile for frontend
+      - docker-compose.yml to run both services
+      - README with setup instructions
+
+    files:
+      - Dockerfile.backend
+      - Dockerfile.frontend
+      - docker-compose.yml
+      - README.md
+
+estimation:
+  total_tasks: 4
+  parallel_capable: true
+  estimated_duration: "20-30 minutes"
+
+demo_talking_points:
+  - "Four distinct tasks that can be generated in parallel"
+  - "Full-stack application with backend + frontend + testing + deployment"
+  - "Demonstrates realistic project structure"
+  - "Shows how Forge handles dependencies between components"

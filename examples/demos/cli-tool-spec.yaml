@@ -1,0 +1,55 @@
+# Forge Quick Demo: CLI Calculator
+# Repository: github.com/internexio/forge-demo-cli-tool
+# Duration: ~3-5 minutes
+
+project:
+  name: cli-tool-demo
+  description: |
+    Command-line calculator tool demonstrating CLI generation.
+    Single task with Click framework, perfect for developer tools.
+
+    Shows:
+    - CLI argument parsing
+    - Subcommands
+    - Input validation
+    - Colorized output
+    - Help documentation
+
+tech_stack:
+  - python
+  - click
+
+tasks:
+  - title: CLI Calculator Tool
+    description: |
+      Create a command-line calculator with Click:
+      - Main command group with --version flag
+      - Subcommands: add, subtract, multiply, divide
+      - Each subcommand takes two numbers as arguments
+      - --verbose flag for detailed output
+      - Colorized output using click.style()
+      - Error handling for division by zero
+      - Input validation (must be numbers)
+      - Comprehensive help text for all commands
+      - setup.py for installation as CLI tool
+      - Tests using pytest
+
+    files:
+      - calculator/cli.py
+      - calculator/__init__.py
+      - setup.py
+      - requirements.txt
+      - tests/test_cli.py
+      - README.md
+      - .gitignore
+
+estimation:
+  total_tasks: 1
+  parallel_capable: false
+  estimated_duration: "3-5 minutes"
+
+demo_talking_points:
+  - "Shows Forge can generate developer tools"
+  - "Immediately usable - can run commands in terminal"
+  - "Demonstrates argument parsing and validation"
+  - "Professional CLI with help text and colors"

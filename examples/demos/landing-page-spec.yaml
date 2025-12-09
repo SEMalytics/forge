@@ -1,0 +1,52 @@
+# Forge Quick Demo: Landing Page
+# Repository: github.com/internexio/forge-demo-landing-page
+# Duration: ~3-5 minutes
+
+project:
+  name: landing-page-demo
+  description: |
+    Beautiful static landing page to showcase frontend generation.
+    Single task, pure HTML/CSS/JS, no build tools.
+
+    Shows:
+    - Modern HTML5 structure
+    - Responsive CSS design
+    - Vanilla JavaScript interactivity
+    - Professional layout
+
+tech_stack:
+  - html
+  - css
+  - javascript
+
+tasks:
+  - title: Static Landing Page
+    description: |
+      Create a modern landing page:
+      - Hero section with call-to-action button
+      - Features section with 3 feature cards
+      - Contact form (frontend only)
+      - Responsive navigation header
+      - Footer with social links
+      - Mobile-responsive design (flexbox/grid)
+      - Smooth scroll behavior
+      - Modern gradient background
+      - Font Awesome icons
+
+    files:
+      - index.html
+      - css/styles.css
+      - js/script.js
+      - README.md
+      - .gitignore
+
+estimation:
+  total_tasks: 1
+  parallel_capable: false
+  estimated_duration: "3-5 minutes"
+
+demo_talking_points:
+  - "Pure frontend generation - no frameworks needed"
+  - "Shows Forge handles static sites as well as complex apps"
+  - "Immediate visual result - can open in browser"
+  - "Mobile-responsive by default"

@@ -1,0 +1,134 @@
+# Forge Demo: Blog Platform
+# Repository: github.com/internexio/forge-demo-blog-platform
+
+project:
+  name: blog-platform-demo
+  description: |
+    A complete blog platform with authentication, posts, comments, and admin panel.
+    Demonstrates Forge's ability to generate complex, multi-feature applications
+    with proper separation of concerns.
+
+    Components:
+    - FastAPI backend with JWT authentication
+    - PostgreSQL database
+    - Blog post CRUD operations
+    - Comment system
+    - Admin panel
+    - User management
+
+tech_stack:
+  - python
+  - fastapi
+  - postgresql
+  - sqlalchemy
+  - jwt
+  - react
+  - typescript
+
+tasks:
+  - title: Authentication System
+    description: |
+      Implement user authentication:
+      - User registration and login
+      - JWT token generation and validation
+      - Password hashing with bcrypt
+      - Auth middleware
+      - User model and database schema
+
+    files:
+      - backend/auth/jwt.py
+      - backend/auth/password.py
+      - backend/models/user.py
+      - backend/routers/auth.py
+
+  - title: Blog Post Management
+    description: |
+      Create blog post functionality:
+      - Post model with title, content, author, timestamps
+      - CRUD endpoints for posts
+      - Draft/Published status
+      - Post categorization and tagging
+      - Author-only edit permissions
+
+    files:
+      - backend/models/post.py
+      - backend/routers/posts.py
+      - backend/schemas/post.py
+      - backend/services/post_service.py
+
+  - title: Comment System
+    description: |
+      Implement commenting feature:
+      - Comment model linked to posts and users
+      - Nested comments support
+      - Comment moderation (approve/delete)
+      - Anti-spam protection
+
+    files:
+      - backend/models/comment.py
+      - backend/routers/comments.py
+      - backend/schemas/comment.py
+      - backend/services/comment_service.py
+
+  - title: Admin Panel Backend
+    description: |
+      Create admin functionality:
+      - Admin-only endpoints
+      - User management (list, ban, delete)
+      - Content moderation
+      - Analytics and statistics
+      - Role-based access control
+
+    files:
+      - backend/routers/admin.py
+      - backend/middleware/admin_check.py
+      - backend/services/admin_service.py
+
+  - title: Frontend React Application
+    description: |
+      Build React frontend:
+      - Login/Register pages
+      - Blog post list and detail views
+      - Comment interface
+      - Post creation/editing (authenticated users)
+      - Admin dashboard
+      - Routing with React Router
+
+    files:
+      - frontend/src/pages/Home.tsx
+      - frontend/src/pages/PostDetail.tsx
+      - frontend/src/pages/Login.tsx
+      - frontend/src/pages/Admin.tsx
+      - frontend/src/components/PostCard.tsx
+      - frontend/src/components/CommentList.tsx
+      - frontend/src/api/client.ts
+
+  - title: Database & Configuration
+    description: |
+      Setup database and config:
+      - PostgreSQL database schema
+      - Alembic migrations
+      - Database connection management
+      - Environment configuration
+      - Docker Compose setup
+
+    files:
+      - backend/database.py
+      - backend/alembic/env.py
+      - backend/alembic/versions/001_initial.py
+      - docker-compose.yml
+      - .env.example
+      - README.md
+
+estimation:
+  total_tasks: 6
+  parallel_capable: true
+  estimated_duration: "30-40 minutes"
+
+demo_talking_points:
+  - "Six parallel tasks demonstrating enterprise-scale project"
+  - "Complete authentication and authorization system"
+  - "Complex data relationships (users -> posts -> comments)"
+  - "Admin panel shows role-based features"
+  - "Production-ready with migrations and Docker"
+  - "Perfect example of full-stack application generation"
