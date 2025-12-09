@@ -2080,6 +2080,376 @@ def worktree_status(name):
         sys.exit(1)
 
 
+@cli.group()
+def context():
+    """Manage generation context for cascading information
+
+    Context items carry information between generation stages,
+    enabling coherent multi-stage code generation.
+
+    Example:
+        forge context show
+        forge context add -t architecture -f design.md
+        forge context stats
+    """
+    pass
+
+
+@context.command('show')
+@click.option('--source', '-s', help="Filter by source (e.g., project ID, task ID)")
+@click.option('--type', '-t', 'context_type', help="Filter by context type")
+@click.option('--tag', help="Filter by tag")
+@click.option('--json', 'output_json', is_flag=True, help="Output as JSON")
+@click.option('--limit', '-n', default=20, help="Maximum items to show")
+def context_show(source, context_type, tag, output_json, limit):
+    """Show context items
+
+    Displays context items with optional filtering.
+
+    Example:
+        forge context show
+        forge context show --source my-project
+        forge context show --type architecture
+        forge context show --json
+    """
+    from forge.core.context import ContextManager, ContextType
+    import json as json_module
+
+    try:
+        manager = ContextManager()
+
+        # Load from storage if it exists
+        try:
+            manager.load()
+        except Exception:
+            pass  # No existing context, that's fine
+
+        # Get all items
+        items = list(manager)
+
+        # Filter by source
+        if source:
+            items = [i for i in items if i.source == source]
+
+        # Filter by type
+        if context_type:
+            try:
+                ct = ContextType(context_type)
+                items = [i for i in items if i.context_type == ct]
+            except ValueError:
+                print_error(f"Unknown context type: {context_type}")
+                console.print(f"Available types: {', '.join(t.value for t in ContextType)}")
+                sys.exit(1)
+
+        # Filter by tag
+        if tag:
+            items = [i for i in items if tag in i.tags]
+
+        # Sort by created_at descending
+        items.sort(key=lambda x: x.created_at, reverse=True)
+
+        # Limit
+        items = items[:limit]
+
+        if output_json:
+            data = [i.to_dict() for i in items]
+            console.print(json_module.dumps(data, indent=2, default=str))
+            return
+
+        if not items:
+            console.print("\n[yellow]No context items found.[/yellow]")
+            console.print("Add context with: [cyan]forge context add -t <type> -f <file>[/cyan]\n")
+            return
+
+        # Display items
+        from rich.table import Table
+
+        console.print()
+        table = Table(title="Context Items", border_style="blue")
+        table.add_column("ID", style="cyan", width=12)
+        table.add_column("Type", style="green")
+        table.add_column("Source")
+        table.add_column("Tokens", justify="right")
+        table.add_column("Active")
+        table.add_column("Created", style="dim")
+
+        for item in items:
+            active = "[green]yes[/green]" if item.is_active else "[dim]no[/dim]"
+            table.add_row(
+                item.id[:12],
+                item.context_type.value,
+                item.source or "-",
+                str(item.token_count or 0),
+                active,
+                item.created_at[:16]
+            )
+
+        console.print(table)
+        console.print()
+
+    except Exception as e:
+        print_error(f"Failed to show context: {e}")
+        sys.exit(1)
+
+
+@context.command('add')
+@click.option('--type', '-t', 'context_type', required=True, help="Context type")
+@click.option('--file', '-f', 'file_path', type=click.Path(exists=True), help="File to read content from")
+@click.option('--id', 'item_id', help="Custom ID for the context item")
+@click.option('--source', '-s', help="Source identifier (e.g., project ID, task ID)")
+@click.option('--tag', multiple=True, help="Tags for the item (can specify multiple)")
+@click.option('--priority', type=int, default=0, help="Priority (higher = more important)")
+@click.option('--stdin', is_flag=True, help="Read content from stdin")
+def context_add(context_type, file_path, item_id, source, tag, priority, stdin):
+    """Add context item
+
+    Adds a new context item from a file or stdin.
+
+    Example:
+        forge context add -t architecture -f design.md
+        forge context add -t specification -s my-project -f spec.md
+        echo "API design..." | forge context add -t architecture --stdin
+        forge context add -t user_input -f notes.txt --tag important --tag api
+    """
+    from forge.core.context import ContextManager, ContextType
+    import hashlib
+
+    try:
+        # Validate context type
+        try:
+            ct = ContextType(context_type)
+        except ValueError:
+            print_error(f"Unknown context type: {context_type}")
+            console.print(f"Available types: {', '.join(t.value for t in ContextType)}")
+            sys.exit(1)
+
+        # Get content
+        if stdin:
+            import sys as sys_module
+            content = sys_module.stdin.read()
+        elif file_path:
+            content = Path(file_path).read_text()
+        else:
+            print_error("Provide --file or --stdin for content")
+            sys.exit(1)
+
+        if not content.strip():
+            print_error("Content cannot be empty")
+            sys.exit(1)
+
+        # Generate ID if not provided
+        if not item_id:
+            hash_content = hashlib.md5(content.encode()).hexdigest()[:8]
+            item_id = f"ctx-{context_type[:4]}-{hash_content}"
+
+        # Add context
+        manager = ContextManager()
+
+        # Load existing context
+        try:
+            manager.load()
+        except Exception:
+            pass
+
+        item = manager.add(
+            id=item_id,
+            content=content,
+            context_type=ct,
+            source=source,
+            tags=list(tag),
+            priority=priority
+        )
+
+        # Save context
+        manager.save()
+
+        print_success(f"Added context item: {item.id}")
+        console.print(f"  Type: [cyan]{item.context_type.value}[/cyan]")
+        console.print(f"  Tokens: [dim]{item.token_count}[/dim]")
+        if source:
+            console.print(f"  Source: [dim]{source}[/dim]")
+        if tag:
+            console.print(f"  Tags: [dim]{', '.join(tag)}[/dim]")
+        console.print()
+
+    except Exception as e:
+        print_error(f"Failed to add context: {e}")
+        sys.exit(1)
+
+
+@context.command('remove')
+@click.argument('ids', nargs=-1, required=True)
+def context_remove(ids):
+    """Remove context items
+
+    Removes one or more context items by ID (or ID prefix).
+
+    Example:
+        forge context remove ctx-spec-abc123
+        forge context remove ctx-spec ctx-arch
+    """
+    from forge.core.context import ContextManager
+
+    try:
+        manager = ContextManager()
+
+        # Load existing context
+        try:
+            manager.load()
+        except Exception:
+            console.print("\n[yellow]No context found.[/yellow]\n")
+            return
+
+        removed = 0
+        for item_id in ids:
+            # Try to find by prefix
+            matches = [k for k in manager._items.keys() if k.startswith(item_id)]
+
+            if not matches:
+                print_warning(f"Context item not found: {item_id}")
+                continue
+
+            for match in matches:
+                if manager.remove(match):
+                    print_success(f"Removed: {match}")
+                    removed += 1
+
+        if removed > 0:
+            manager.save()
+            console.print(f"\n[green]✓[/green] Removed {removed} item(s)\n")
+
+    except Exception as e:
+        print_error(f"Failed to remove context: {e}")
+        sys.exit(1)
+
+
+@context.command('clear')
+@click.option('--source', '-s', help="Clear only items with this source")
+@click.option('--type', '-t', 'context_type', help="Clear only items of type")
+@click.option('--force', '-f', is_flag=True, help="Skip confirmation")
+def context_clear(source, context_type, force):
+    """Clear context items
+
+    Clears all context items or filters by source/type.
+
+    Example:
+        forge context clear
+        forge context clear --source my-project
+        forge context clear --type test_result
+        forge context clear --force
+    """
+    from forge.core.context import ContextManager, ContextType
+
+    try:
+        manager = ContextManager()
+
+        # Load existing context
+        try:
+            manager.load()
+        except Exception:
+            console.print("\n[yellow]No context found.[/yellow]\n")
+            return
+
+        # Filter items
+        items = list(manager)
+
+        if source:
+            items = [i for i in items if i.source == source]
+
+        if context_type:
+            try:
+                ct = ContextType(context_type)
+                items = [i for i in items if i.context_type == ct]
+            except ValueError:
+                print_error(f"Unknown context type: {context_type}")
+                sys.exit(1)
+
+        if not items:
+            console.print("\n[yellow]No matching context items to clear.[/yellow]\n")
+            return
+
+        # Confirm unless force
+        if not force:
+            console.print(f"\n[yellow]Will clear {len(items)} context item(s)[/yellow]")
+            if not click.confirm("Continue?"):
+                console.print("[dim]Cancelled[/dim]")
+                return
+
+        # Clear
+        if source or context_type:
+            # Remove filtered items
+            for item in items:
+                manager.remove(item.id)
+        else:
+            # Clear all
+            manager.clear()
+
+        manager.save()
+        print_success(f"Cleared {len(items)} context item(s)")
+
+    except Exception as e:
+        print_error(f"Failed to clear context: {e}")
+        sys.exit(1)
+
+
+@context.command('stats')
+def context_stats():
+    """Show context statistics
+
+    Displays statistics about context usage including
+    item counts, token usage, and type distribution.
+
+    Example:
+        forge context stats
+    """
+    from forge.core.context import ContextManager
+    from rich.table import Table
+    from rich.panel import Panel
+
+    try:
+        manager = ContextManager()
+
+        # Load existing context
+        try:
+            manager.load()
+        except Exception:
+            pass
+
+        if len(manager) == 0:
+            console.print("\n[yellow]No context items.[/yellow]\n")
+            return
+
+        # Get stats using the manager's method
+        stats = manager.get_stats()
+
+        console.print()
+        console.print(Panel(
+            f"[bold]Total Items:[/bold] {stats['total_items']}\n"
+            f"[bold]Active Items:[/bold] {stats['active_items']}\n"
+            f"[bold]Total Tokens:[/bold] {stats['total_tokens']:,}\n"
+            f"[bold]Max Tokens:[/bold] {stats['max_tokens']:,}",
+            title="[bold cyan]Context Statistics[/bold cyan]",
+            border_style="blue"
+        ))
+
+        # Type breakdown
+        if stats['types']:
+            table = Table(title="By Type", border_style="dim")
+            table.add_column("Type", style="cyan")
+            table.add_column("Count", justify="right")
+
+            for ctx_type, count in sorted(stats['types'].items(), key=lambda x: -x[1]):
+                table.add_row(ctx_type, str(count))
+
+            console.print(table)
+
+        console.print()
+
+    except Exception as e:
+        print_error(f"Failed to get stats: {e}")
+        sys.exit(1)
+
+
 @cli.command()
 @click.option('--project-id', '-p', help="Show stats for specific project")
 def stats(project_id):

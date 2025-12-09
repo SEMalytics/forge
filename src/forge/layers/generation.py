@@ -19,6 +19,7 @@ from rich.table import Table
 from forge.generators.base import CodeGenerator, GenerationContext, GenerationResult, GeneratorError
 from forge.integrations.compound_engineering import Task
 from forge.core.state_manager import StateManager
+from forge.core.context import ContextManager, ContextType, ContextWindow
 from forge.git.worktree import WorktreeManager, WorktreeInfo, WorktreeError
 from forge.utils.logger import logger
 from forge.utils.errors import ForgeError
@@ -127,7 +128,8 @@ class GenerationOrchestrator:
         state_manager: Optional[StateManager] = None,
         console: Optional[Console] = None,
         max_parallel: int = 3,
-        use_worktrees: bool = False
+        use_worktrees: bool = False,
+        context_manager: Optional[ContextManager] = None
     ):
         """
         Initialize generation orchestrator.
@@ -138,6 +140,7 @@ class GenerationOrchestrator:
             console: Rich console for output
             max_parallel: Maximum parallel tasks (if generator supports it)
             use_worktrees: Use git worktrees for isolated parallel execution
+            context_manager: Context manager for cascading context
         """
         self.generator = generator
         self.state_manager = state_manager or StateManager()
@@ -145,6 +148,7 @@ class GenerationOrchestrator:
         self.max_parallel = max_parallel if generator.supports_parallel() else 1
         self.use_worktrees = use_worktrees
         self._worktree_manager: Optional[WorktreeManager] = None
+        self.context_manager = context_manager or ContextManager()
 
         if use_worktrees:
             try:
@@ -795,3 +799,166 @@ class GenerationOrchestrator:
     def get_worktree_manager(self) -> Optional[WorktreeManager]:
         """Get the worktree manager instance."""
         return self._worktree_manager
+
+    # Context management methods
+
+    def add_project_context(
+        self,
+        project_id: str,
+        project_description: str,
+        tech_stack: Optional[List[str]] = None,
+        architecture: Optional[str] = None
+    ):
+        """
+        Add initial project context for generation.
+
+        Args:
+            project_id: Project identifier
+            project_description: Project description/requirements
+            tech_stack: List of technologies
+            architecture: Architecture documentation
+        """
+        # Add project specification
+        self.context_manager.add(
+            id=f"project_{project_id}",
+            content=project_description,
+            context_type=ContextType.SPECIFICATION,
+            source=project_id,
+            priority=10,  # High priority
+            tags=["project", project_id]
+        )
+
+        # Add tech stack context
+        if tech_stack:
+            tech_content = f"Technology Stack:\n- " + "\n- ".join(tech_stack)
+            self.context_manager.add(
+                id=f"tech_stack_{project_id}",
+                content=tech_content,
+                context_type=ContextType.SPECIFICATION,
+                source=project_id,
+                references=[f"project_{project_id}"],
+                priority=8,
+                tags=["tech_stack", project_id]
+            )
+
+        # Add architecture context
+        if architecture:
+            self.context_manager.add(
+                id=f"architecture_{project_id}",
+                content=architecture,
+                context_type=ContextType.ARCHITECTURE,
+                source=project_id,
+                references=[f"project_{project_id}"],
+                priority=9,
+                summarize=True,  # Summarize long architecture docs
+                tags=["architecture", project_id]
+            )
+
+        logger.info(f"Added project context for {project_id}")
+
+    def add_task_context(
+        self,
+        task: Task,
+        additional_context: Optional[str] = None
+    ):
+        """
+        Add task-specific context.
+
+        Args:
+            task: Task to add context for
+            additional_context: Additional context string
+        """
+        # Build task context from task details
+        task_content = f"""Task: {task.title}
+Type: {task.type}
+Description: {task.description}
+
+Specification:
+{task.specification}
+"""
+
+        if task.dependencies:
+            task_content += f"\nDependencies: {', '.join(task.dependencies)}"
+
+        if additional_context:
+            task_content += f"\n\nAdditional Context:\n{additional_context}"
+
+        # Add references to dependent tasks
+        references = [f"task_{dep}" for dep in task.dependencies if f"task_{dep}" in self.context_manager]
+
+        self.context_manager.add(
+            id=f"task_{task.id}",
+            content=task_content,
+            context_type=ContextType.SPECIFICATION,
+            source=task.id,
+            references=references,
+            priority=5,
+            tags=["task", task.id]
+        )
+
+    def add_generation_result_context(
+        self,
+        task_id: str,
+        result: GenerationResult
+    ):
+        """
+        Add generation result to context for cascading.
+
+        Args:
+            task_id: Task identifier
+            result: Generation result to add
+        """
+        if not result.success:
+            return
+
+        # Add generated code context
+        for file_path, content in result.files.items():
+            file_id = f"generated_{task_id}_{file_path.replace('/', '_')}"
+
+            self.context_manager.add(
+                id=file_id,
+                content=f"# Generated file: {file_path}\n\n{content}",
+                context_type=ContextType.GENERATED_CODE,
+                source=task_id,
+                references=[f"task_{task_id}"],
+                summarize=True,  # Summarize large files
+                priority=3,
+                tags=["generated", task_id, file_path.split('/')[-1]]
+            )
+
+        logger.debug(f"Added {len(result.files)} generated file(s) to context for {task_id}")
+
+    def get_context_for_task(
+        self,
+        task_id: str,
+        max_tokens: Optional[int] = None
+    ) -> str:
+        """
+        Get relevant context for a task.
+
+        Args:
+            task_id: Task identifier
+            max_tokens: Maximum tokens for context
+
+        Returns:
+            Formatted context string
+        """
+        window = self.context_manager.get_context_for(
+            target_id=task_id,
+            include_references=True,
+            max_tokens=max_tokens
+        )
+
+        return window.to_prompt(include_metadata=True)
+
+    def get_context_manager(self) -> ContextManager:
+        """Get the context manager instance."""
+        return self.context_manager
+
+    def save_context(self, path: Optional[Path] = None):
+        """Save context to disk."""
+        self.context_manager.save(path)
+
+    def load_context(self, path: Optional[Path] = None) -> int:
+        """Load context from disk."""
+        return self.context_manager.load(path)
