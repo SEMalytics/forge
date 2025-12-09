@@ -2,15 +2,19 @@
 Abstract base class for code generators
 
 Defines the interface that all code generation backends must implement.
+Supports streaming output for real-time progress feedback.
 """
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, AsyncIterator, TYPE_CHECKING
 from enum import Enum
 from datetime import datetime
 
 from forge.utils.errors import ForgeError
+
+if TYPE_CHECKING:
+    from forge.core.streaming import StreamEmitter
 
 
 class GeneratorError(ForgeError):
@@ -103,6 +107,7 @@ class CodeGenerator(ABC):
     Abstract base class for code generators.
 
     All generator backends must implement this interface.
+    Supports both synchronous and streaming generation modes.
     """
 
     @abstractmethod
@@ -120,6 +125,63 @@ class CodeGenerator(ABC):
             GeneratorError: If generation fails
         """
         pass
+
+    async def generate_streaming(
+        self,
+        context: GenerationContext,
+        emitter: 'StreamEmitter'
+    ) -> GenerationResult:
+        """
+        Generate code with streaming output.
+
+        Override this method to provide streaming support.
+        Default implementation falls back to non-streaming generate().
+
+        Args:
+            context: Generation context with specification and patterns
+            emitter: StreamEmitter for progress and content events
+
+        Returns:
+            GenerationResult with generated files or error
+
+        Raises:
+            GeneratorError: If generation fails
+        """
+        # Default: fall back to non-streaming
+        await emitter.started(f"Generating {context.task_id}...")
+        await emitter.stage("generation", "Generating code...")
+
+        try:
+            result = await self.generate(context)
+
+            if result.success:
+                # Emit file events for each generated file
+                for file_path, content in result.files.items():
+                    await emitter.file_completed(file_path, len(content))
+
+                await emitter.completed(
+                    f"Generated {len(result.files)} files",
+                    metadata={"files": list(result.files.keys())}
+                )
+            else:
+                await emitter.failed(result.error or "Generation failed")
+
+            return result
+
+        except Exception as e:
+            await emitter.failed(str(e))
+            raise
+
+    def supports_streaming(self) -> bool:
+        """
+        Whether this generator supports streaming output.
+
+        Override and return True if generate_streaming() is implemented.
+
+        Returns:
+            True if streaming is supported
+        """
+        return False
 
     @abstractmethod
     async def health_check(self) -> bool:

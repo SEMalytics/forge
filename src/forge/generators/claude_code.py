@@ -2,6 +2,7 @@
 Claude Code CLI backend for code generation
 
 Implements code generation using Claude Code CLI with workspace management.
+Supports streaming output for real-time progress feedback.
 """
 
 import subprocess
@@ -9,7 +10,7 @@ import asyncio
 import time
 import shutil
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, TYPE_CHECKING
 
 from forge.generators.base import (
     CodeGenerator,
@@ -18,6 +19,9 @@ from forge.generators.base import (
     GeneratorError
 )
 from forge.utils.logger import logger
+
+if TYPE_CHECKING:
+    from forge.core.streaming import StreamEmitter
 
 
 class ClaudeCodeGenerator(CodeGenerator):
@@ -115,6 +119,200 @@ class ClaudeCodeGenerator(CodeGenerator):
                 duration_seconds=duration,
                 metadata={"task_id": context.task_id}
             )
+
+    async def generate_streaming(
+        self,
+        context: GenerationContext,
+        emitter: 'StreamEmitter'
+    ) -> GenerationResult:
+        """
+        Generate code with streaming progress and output.
+
+        Provides real-time feedback during Claude Code CLI execution.
+
+        Args:
+            context: Generation context
+            emitter: StreamEmitter for progress events
+
+        Returns:
+            GenerationResult with generated files
+        """
+        self.validate_context(context)
+
+        start_time = time.time()
+
+        try:
+            await emitter.started(f"Starting Claude Code generation for {context.task_id}")
+
+            # Check for cancellation
+            if emitter.is_cancelled:
+                await emitter.cancelled()
+                return GenerationResult(
+                    success=False,
+                    error="Cancelled",
+                    duration_seconds=time.time() - start_time
+                )
+
+            # Create workspace
+            await emitter.stage("workspace", "Creating workspace...")
+            await emitter.progress(0.1)
+            workspace = self._create_workspace(context)
+
+            # Generate specification
+            await emitter.stage("specification", "Generating specification file...")
+            await emitter.progress(0.2)
+            spec_file = self._create_specification(workspace, context)
+
+            if emitter.is_cancelled:
+                await emitter.cancelled()
+                return GenerationResult(
+                    success=False,
+                    error="Cancelled",
+                    duration_seconds=time.time() - start_time
+                )
+
+            # Run Claude Code with streaming output
+            await emitter.stage("generation", "Running Claude Code...")
+            await emitter.progress(0.25)
+
+            result = await self._run_claude_streaming(workspace, spec_file, emitter)
+
+            if emitter.is_cancelled:
+                await emitter.cancelled()
+                return GenerationResult(
+                    success=False,
+                    error="Cancelled",
+                    duration_seconds=time.time() - start_time
+                )
+
+            # Collect files
+            await emitter.stage("collection", "Collecting generated files...")
+            await emitter.progress(0.9)
+
+            files = self._collect_files(workspace)
+
+            # Emit file events
+            for filepath, content in files.items():
+                await emitter.file_completed(filepath, len(content))
+
+            duration = time.time() - start_time
+
+            generation_result = GenerationResult(
+                success=result.returncode == 0 and len(files) > 0,
+                files=files,
+                duration_seconds=duration,
+                error=result.stderr if result.returncode != 0 else None,
+                metadata={
+                    "task_id": context.task_id,
+                    "workspace": str(workspace),
+                    "backend": "claude_code"
+                }
+            )
+
+            if generation_result.success:
+                await emitter.completed(
+                    f"Generated {len(files)} files",
+                    metadata={"files": list(files.keys()), "duration": duration}
+                )
+            else:
+                await emitter.failed(result.stderr or "No files generated")
+
+            return generation_result
+
+        except Exception as e:
+            duration = time.time() - start_time
+            error_msg = f"Claude Code generation failed: {e}"
+            await emitter.failed(error_msg)
+
+            return GenerationResult(
+                success=False,
+                error=error_msg,
+                duration_seconds=duration,
+                metadata={"task_id": context.task_id}
+            )
+
+    async def _run_claude_streaming(
+        self,
+        workspace: Path,
+        spec_file: Path,
+        emitter: 'StreamEmitter'
+    ) -> subprocess.CompletedProcess:
+        """
+        Run Claude Code CLI with streaming output.
+
+        Args:
+            workspace: Workspace directory
+            spec_file: Specification file
+            emitter: StreamEmitter for output streaming
+
+        Returns:
+            CompletedProcess result
+        """
+        cmd = [
+            self.claude_binary,
+            "code",
+            "--workspace", str(workspace),
+            "--spec", str(spec_file)
+        ]
+
+        logger.debug(f"Running command: {' '.join(cmd)}")
+
+        # Run with streaming stdout/stderr
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            cwd=str(workspace)
+        )
+
+        stdout_buffer = []
+        stderr_buffer = []
+        progress = [0.25]  # Start from 25%
+
+        async def read_stream(stream, buffer, is_stderr=False):
+            """Read from stream and emit chunks"""
+            while True:
+                if emitter.is_cancelled:
+                    process.terminate()
+                    break
+
+                line = await stream.readline()
+                if not line:
+                    break
+
+                decoded = line.decode()
+                buffer.append(decoded)
+
+                # Emit chunk
+                if not is_stderr:
+                    await emitter.chunk(decoded)
+
+                    # Update progress gradually
+                    if progress[0] < 0.85:
+                        progress[0] = min(progress[0] + 0.02, 0.85)
+                        await emitter.progress(progress[0])
+                else:
+                    # Log stderr as warnings
+                    await emitter.warning(decoded.strip())
+
+        # Read both streams concurrently
+        await asyncio.gather(
+            read_stream(process.stdout, stdout_buffer),
+            read_stream(process.stderr, stderr_buffer, is_stderr=True)
+        )
+
+        await process.wait()
+
+        return subprocess.CompletedProcess(
+            args=cmd,
+            returncode=process.returncode,
+            stdout="".join(stdout_buffer),
+            stderr="".join(stderr_buffer)
+        )
+
+    def supports_streaming(self) -> bool:
+        """Claude Code supports streaming output"""
+        return True
 
     def _create_workspace(self, context: GenerationContext) -> Path:
         """

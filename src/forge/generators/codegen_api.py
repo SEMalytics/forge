@@ -2,13 +2,14 @@
 CodeGen API backend for code generation
 
 Implements code generation using the CodeGen API with parallel execution support.
+Supports streaming output for real-time progress feedback.
 """
 
 import httpx
 import asyncio
 import time
 import re
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, TYPE_CHECKING
 
 from forge.generators.base import (
     CodeGenerator,
@@ -17,6 +18,9 @@ from forge.generators.base import (
     GeneratorError
 )
 from forge.utils.logger import logger
+
+if TYPE_CHECKING:
+    from forge.core.streaming import StreamEmitter
 
 
 class CodeGenAPIGenerator(CodeGenerator):
@@ -202,6 +206,183 @@ class CodeGenAPIGenerator(CodeGenerator):
                 duration_seconds=duration,
                 metadata={"task_id": context.task_id}
             )
+
+    async def generate_streaming(
+        self,
+        context: GenerationContext,
+        emitter: 'StreamEmitter'
+    ) -> GenerationResult:
+        """
+        Generate code with streaming progress updates.
+
+        Provides real-time feedback during CodeGen API generation.
+
+        Args:
+            context: Generation context
+            emitter: StreamEmitter for progress events
+
+        Returns:
+            GenerationResult with generated files
+        """
+        self.validate_context(context)
+
+        start_time = time.time()
+
+        try:
+            await emitter.started(f"Starting code generation for {context.task_id}")
+            await emitter.stage("preparation", "Preparing generation context...")
+
+            # Check for cancellation
+            if emitter.is_cancelled:
+                await emitter.cancelled()
+                return GenerationResult(
+                    success=False,
+                    error="Cancelled",
+                    duration_seconds=time.time() - start_time
+                )
+
+            # Build prompt
+            await emitter.progress(0.1, "Building prompt with KF patterns...")
+            prompt = self._build_prompt(context)
+
+            await emitter.stage("connection", "Connecting to CodeGen API...")
+            await emitter.progress(0.15)
+
+            # Initialize CodeGen client
+            from forge.integrations.codegen_client import CodeGenClient, CodeGenError
+
+            codegen_client = CodeGenClient(
+                api_token=self.api_key,
+                org_id=self.org_id,
+                timeout=self.timeout
+            )
+
+            # Get repository
+            await emitter.progress(0.2, "Resolving repository...")
+            repo_id = await self._get_repository_id(codegen_client, context)
+
+            if emitter.is_cancelled:
+                await emitter.cancelled()
+                return GenerationResult(
+                    success=False,
+                    error="Cancelled",
+                    duration_seconds=time.time() - start_time
+                )
+
+            if repo_id is None:
+                error_msg = "No CodeGen repository configured"
+                await emitter.failed(error_msg)
+                return GenerationResult(
+                    success=False,
+                    error=error_msg,
+                    duration_seconds=time.time() - start_time
+                )
+
+            # Start generation
+            await emitter.stage("generation", "Generating code...")
+            await emitter.progress(0.25)
+
+            # Progress callback for CodeGen API
+            last_progress = [0.25]
+
+            async def progress_callback(status: Dict[str, Any]):
+                """Update progress based on CodeGen status"""
+                if emitter.is_cancelled:
+                    return
+
+                status_str = status.get("status", "unknown")
+                await emitter.status(f"CodeGen: {status_str}")
+
+                # Increment progress gradually
+                current = last_progress[0]
+                if current < 0.85:
+                    last_progress[0] = min(current + 0.05, 0.85)
+                    await emitter.progress(last_progress[0])
+
+            # Run generation with progress updates
+            result_data = await codegen_client.generate_code(
+                prompt=prompt,
+                repository_id=repo_id,
+                on_progress=progress_callback
+            )
+
+            if emitter.is_cancelled:
+                await emitter.cancelled()
+                return GenerationResult(
+                    success=False,
+                    error="Cancelled",
+                    duration_seconds=time.time() - start_time
+                )
+
+            # Parse results
+            await emitter.stage("parsing", "Processing generated files...")
+            await emitter.progress(0.9)
+
+            duration = time.time() - start_time
+            files = {}
+
+            # Extract files from result
+            if isinstance(result_data, dict):
+                if "files" in result_data:
+                    for file_info in result_data["files"]:
+                        path = file_info.get("path") or file_info.get("filepath")
+                        content = file_info.get("content") or file_info.get("code")
+                        if path and content:
+                            files[path] = content
+                            await emitter.file_completed(path, len(content))
+
+                if "output" in result_data and isinstance(result_data["output"], dict):
+                    for path, content in result_data["output"].items():
+                        files[path] = content
+                        await emitter.file_completed(path, len(content))
+
+                if not files and "generated_text" in result_data:
+                    files = self._parse_files(result_data["generated_text"])
+                    for path, content in files.items():
+                        await emitter.file_completed(path, len(content))
+
+            if not files:
+                result_text = str(result_data)
+                files = self._parse_files(result_text)
+                for path, content in files.items():
+                    await emitter.file_completed(path, len(content))
+
+            result = GenerationResult(
+                success=len(files) > 0,
+                files=files,
+                duration_seconds=duration,
+                metadata={
+                    "task_id": context.task_id,
+                    "backend": "codegen_api",
+                    "agent_run_id": result_data.get("id") or result_data.get("agent_run_id"),
+                }
+            )
+
+            if result.success:
+                await emitter.completed(
+                    f"Generated {len(files)} files",
+                    metadata={"files": list(files.keys()), "duration": duration}
+                )
+            else:
+                await emitter.failed("No files generated")
+
+            return result
+
+        except Exception as e:
+            duration = time.time() - start_time
+            error_msg = f"Generation failed: {e}"
+            await emitter.failed(error_msg)
+
+            return GenerationResult(
+                success=False,
+                error=error_msg,
+                duration_seconds=duration,
+                metadata={"task_id": context.task_id}
+            )
+
+    def supports_streaming(self) -> bool:
+        """CodeGen API supports streaming progress updates"""
+        return True
 
     async def _ensure_repository_setup(
         self,
