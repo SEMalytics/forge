@@ -300,6 +300,6 @@ Potential improvements:
 
 ## Related Documentation
 
-- [KnowledgeForge Patterns](../knowledgeforge-patterns/)
+- [KnowledgeForge Patterns](patterns/)
 - [Testing System](./TESTING_SYSTEM.md)
 - [CLI Reference](./CLI_REFERENCE.md)

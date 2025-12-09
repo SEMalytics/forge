@@ -15,12 +15,12 @@ This document defines coding standards, architectural patterns, and development 
 ```
 forge-build/
 ├── forge/                      # Working directory (YOUR CODE HERE)
-├── knowledgeforge-patterns/    # Reference: 28 KF 3.2 files (READ-ONLY)
+├── patterns/    # Reference: 28 KF 3.2 files (READ-ONLY)
 └── compound-engineering/       # Reference: CE plugin (READ-ONLY)
 ```
 
 **Always work from:** `forge/` directory  
-**Reference patterns at:** `../knowledgeforge-patterns/`  
+**Reference patterns at:** `patterns/`  
 **Reference CE plugin at:** `../compound-engineering/`
 
 ---
@@ -213,7 +213,7 @@ from forge.utils.errors import (
 
 def load_pattern(filename: str) -> str:
     """Load KF pattern file."""
-    pattern_path = Path(f"../knowledgeforge-patterns/{filename}")
+    pattern_path = Path(f"patterns/{filename}")
     
     if not pattern_path.exists():
         raise PatternNotFoundError(
@@ -269,17 +269,17 @@ class PatternStore:
     - 01_Core_DataTransfer.md (compression and chunking)
     - 00_KB3_Fundamentals.md (workflow-first architecture)
     
-    Pattern files are loaded from: ../knowledgeforge-patterns/
+    Pattern files are loaded from: patterns/
     """
     
     def __init__(self, db_path: str = ".forge/patterns.db"):
-        self.patterns_dir = Path("../knowledgeforge-patterns")
+        self.patterns_dir = Path("patterns")
         
         # Validate KF patterns are available
         if not self.patterns_dir.exists():
             raise FileNotFoundError(
                 f"KnowledgeForge patterns not found at {self.patterns_dir}\n"
-                f"Setup: cp /mnt/project/*.md ../knowledgeforge-patterns/"
+                f"Setup: cp /mnt/project/*.md patterns/"
             )
 ```
 
@@ -1275,7 +1275,7 @@ You: Implement semantic search with embeddings
 cd forge
 claude
 You: Review the changes in src/forge/knowledgeforge/. 
-     Check against patterns in ../knowledgeforge-patterns/
+     Check against patterns in patterns/
      Focus on: correctness, KF pattern compliance, performance
 
 # Terminal 1: Revisions
@@ -1345,7 +1345,7 @@ Analyze and fix GitHub issue: $ARGUMENTS
 Steps:
 1. Use `gh issue view $ARGUMENTS` for details
 2. Search codebase for relevant files
-3. Check KF patterns in ../knowledgeforge-patterns/
+3. Check KF patterns in patterns/
 4. Implement fix following patterns
 5. Write tests (pytest, >80% coverage)
 6. Run: black, isort, mypy, ruff
@@ -1387,7 +1387,7 @@ Template:
 ```
 # Good first message sets context
 You: I'm working on the Forge pattern store. Reference files 
-     are in ../knowledgeforge-patterns/. We follow the standards 
+     are in patterns/. We follow the standards 
      in CLAUDE.md. I need to add semantic search functionality.
 
 # vs just:
@@ -1499,7 +1499,7 @@ Claude: [refactors incrementally with tests]
 - `forge_complete_implementation_plan.md` - Technical spec
 
 ### KnowledgeForge Patterns
-- All 28 patterns in: `../knowledgeforge-patterns/`
+- All 28 patterns in: `patterns/`
 - Core architecture: `00_KB3_Core.md`
 - Implementation guide: `00_KB3_ImplementationGuide.md`
 

@@ -54,7 +54,7 @@ git:
 
 # KnowledgeForge settings
 knowledgeforge:
-  patterns_dir: ../knowledgeforge-patterns  # Pattern directory
+  patterns_dir: patterns  # Pattern directory
   embedding_model: all-MiniLM-L6-v2        # Sentence transformer model
   cache_size: 128                           # LRU cache size
   search_method: hybrid                     # Default search method
@@ -140,7 +140,7 @@ Pattern storage and search settings:
 
 ```yaml
 knowledgeforge:
-  patterns_dir: ../knowledgeforge-patterns
+  patterns_dir: patterns
   embedding_model: all-MiniLM-L6-v2
   cache_size: 128
   search_method: hybrid

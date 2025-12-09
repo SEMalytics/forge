@@ -1,115 +1,76 @@
-# Forge Patterns
+# Forge Patterns Library
 
-This directory contains reusable patterns and best practices for the Forge AI-powered software factory.
+This directory contains curated operational patterns for use with the Forge code generation system. These patterns provide reference implementations for data handling, orchestration, testing, and security.
+
+## Directory Structure
+
+```
+patterns/
+├── core/                    # Core system patterns
+│   ├── architecture.md      # Five-layer architecture design
+│   └── data-transfer.md     # Unlimited data handling with compression/chunking
+│
+├── agents/                  # Agent coordination patterns
+│   └── catalog.md           # Agent registry and capability matrix
+│
+├── architecture/            # Forge-specific architecture
+│   └── 6-layer-architecture.md  # Forge's 6-layer orchestration model
+│
+├── workflows/               # Workflow orchestration patterns
+│   └── orchestration.md     # Master orchestrator, routing, coordination
+│
+├── testing/                 # Testing patterns
+│   └── scenarios.md         # Unit, integration, system, acceptance tests
+│
+├── operations/              # Operational patterns
+│   ├── security.md          # Authentication, authorization, data protection
+│   ├── implementation.md    # Deployment and configuration guide
+│   └── git-integration.md   # Automated artifact capture and versioning
+│
+├── deployment/              # Deployment patterns
+│   └── multi-platform.md    # Multi-platform deployment configurations
+│
+└── development/             # Development patterns
+    └── conventional-commits.md  # Commit message standards
+```
 
 ## Pattern Categories
 
-### Architecture (`architecture/`)
-Core architectural patterns for building software with Forge:
-- **6-layer-architecture.md** - The foundational 6-layer architecture
-- **task-decomposition.md** - Breaking down complex projects into tasks
-- **parallel-generation.md** - Distributed code generation strategies
-- **state-management.md** - Managing project state across layers
+### Core Patterns (from KnowledgeForge 3.2)
+- **architecture.md**: Five-layer system architecture (Knowledge → Intelligence → Data Transfer → Orchestration → Git)
+- **data-transfer.md**: Compression algorithms (pako, lz-string, native), chunking system, streaming, performance optimization
 
-### Development (`development/`)
-Development patterns and best practices:
-- **conventional-commits.md** - Commit message format and strategies
-- **pr-workflows.md** - Pull request automation patterns
-- **code-generation.md** - Effective prompts for code generation
-- **tech-stack-selection.md** - Choosing the right technology stack
+### Agent Patterns
+- **catalog.md**: Agent registry, capability matrix, coordination patterns (sequential, parallel, hierarchical, pipeline)
 
-### Testing (`testing/`)
-Testing patterns and strategies:
-- **docker-testing.md** - Isolated Docker-based testing
-- **test-generation.md** - Auto-generating comprehensive tests
-- **security-scanning.md** - Security vulnerability detection
-- **performance-testing.md** - Performance benchmarking patterns
+### Workflow Patterns
+- **orchestration.md**: Master orchestrator pattern, intelligent routing, resource management, circuit breaker, performance tracking
 
-### Deployment (`deployment/`)
-Deployment patterns for different platforms:
-- **multi-platform.md** - Deploying to multiple platforms
-- **flyio.md** - Fly.io deployment best practices
-- **vercel.md** - Vercel deployment patterns
-- **docker.md** - Docker and Docker Compose patterns
-- **kubernetes.md** - Kubernetes deployment strategies
+### Testing Patterns
+- **scenarios.md**: Comprehensive test scenarios covering system health, agent communication, data transfer, workflow execution
 
-### Troubleshooting (`troubleshooting/`)
-Common issues and resolution patterns:
-- **api-errors.md** - API error handling and retries
-- **docker-issues.md** - Docker-related troubleshooting
-- **git-conflicts.md** - Resolving merge conflicts
-- **test-failures.md** - Debugging test failures
+### Operations Patterns
+- **security.md**: Multi-layer security model, authentication methods (API key, JWT, OAuth2, mTLS), RBAC/ABAC
+- **implementation.md**: Production deployment procedures, configuration management
+- **git-integration.md**: Automated artifact capture, repository structure, continuous documentation
 
-## Using Patterns
+## Usage in Forge
 
-### From CLI
+These patterns inform Forge's:
+1. **Layer 3 (Generation)**: Data transfer patterns for handling large codebases
+2. **Layer 4 (Testing)**: Test scenario patterns for automated test generation
+3. **Layer 5 (Refinement)**: Orchestration patterns for multi-agent review
+4. **Layer 6 (Deployment)**: Git integration patterns for automated commits
 
-Search for patterns:
-```bash
-forge search "deployment strategies"
-forge search "error handling"
-```
+## Relationship to KnowledgeForge 4.0
 
-Get pattern explanations:
-```bash
-forge explain "conventional commits"
-forge explain "docker testing"
-```
+The patterns in this directory are **operational/infrastructure patterns**.
 
-### From Python API
-
-```python
-from forge.knowledgeforge.pattern_store import PatternStore
-
-# Initialize pattern store
-store = PatternStore()
-
-# Search for patterns
-results = store.search("testing strategies", limit=5)
-
-for match in results:
-    print(f"{match.title}: {match.relevance_score:.2f}")
-    print(match.content)
-```
-
-## Creating New Patterns
-
-Each pattern should follow this structure:
-
-```markdown
-# Pattern Title
-
-## Context
-When to use this pattern and what problem it solves
-
-## Problem
-The specific problem this pattern addresses
-
-## Solution
-The pattern implementation details
-
-## Examples
-Concrete examples of the pattern in use
-
-## Related Patterns
-Links to related patterns
-
-## References
-External resources and documentation
-```
-
-## Pattern Organization
-
-Patterns are organized by:
-1. **Category** - Architecture, Development, Testing, Deployment, Troubleshooting
-2. **Difficulty** - Beginner, Intermediate, Advanced
-3. **Tags** - Searchable keywords for quick discovery
-
-## Contributing Patterns
-
-To add a new pattern:
-1. Choose the appropriate category directory
-2. Follow the pattern template structure
-3. Add searchable tags and metadata
-4. Include concrete examples
-5. Link to related patterns
+For **agent specification and coordination** patterns, see the KnowledgeForge 4.0 files in `../knowledgeforge/`:
+- `00_Project_Instructions.md` - Core behavioral framework
+- `01_Navigator_Agent.md` - Intent routing
+- `02_Builder_Agent.md` - PDIA agent creation method
+- `03_Coordination_Patterns.md` - Multi-agent orchestration
+- `04_Specification_Templates.md` - Reusable specification formats
+- `05_Expert_Agent_Example.md` - Domain specialist pattern
+- `06_Quick_Reference.md` - Quick lookup guide

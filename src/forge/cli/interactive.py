@@ -78,7 +78,8 @@ async def chat_session(
     api_key: str,
     project_id: Optional[str] = None,
     save_session: bool = True,
-    analyze_cwd: bool = True
+    analyze_cwd: bool = True,
+    repo_context=None
 ) -> Dict[str, Any]:
     """
     Run interactive planning chat session.
@@ -88,6 +89,7 @@ async def chat_session(
         project_id: Optional existing project ID to continue
         save_session: Whether to save conversation history
         analyze_cwd: Whether to analyze current directory codebase
+        repo_context: Optional RepositoryContext from pre-analyzed repository
 
     Returns:
         Project summary dictionary
@@ -99,9 +101,14 @@ async def chat_session(
         # Initialize planning agent
         agent = PlanningAgent(api_key)
 
-        # Analyze existing codebase if in a project directory
+        # Use provided repo_context if available, otherwise analyze cwd
         codebase_context = None
-        if analyze_cwd and not project_id:
+        if repo_context:
+            # Use the pre-analyzed repository context
+            agent.repository_context = repo_context
+            agent.codebase_context = repo_context.to_prompt_context()
+            console.print("[green]✓[/green] Using provided repository analysis\n")
+        elif analyze_cwd and not project_id:
             codebase_context = _analyze_codebase()
             if codebase_context:
                 console.print("\n[green]✓[/green] Analyzed existing codebase\n")
@@ -114,8 +121,8 @@ async def chat_session(
         # Print welcome banner
         _print_welcome()
 
-        # Provide codebase context to agent if available
-        if codebase_context:
+        # Provide codebase context to agent if available (from old-style analysis)
+        if codebase_context and not repo_context:
             # Add codebase context to agent's system prompt/context
             # The agent will have this context for the entire conversation
             agent.codebase_context = codebase_context['detailed_analysis']
@@ -513,14 +520,15 @@ Location: {cwd}
     return analysis
 
 
-def simple_chat(api_key: str):
+def simple_chat(api_key: str, repo_context=None):
     """
     Simple synchronous chat wrapper for CLI.
 
     Args:
         api_key: Anthropic API key
+        repo_context: Optional RepositoryContext from repository analysis
 
     Returns:
         Project summary or None
     """
-    return asyncio.run(chat_session(api_key))
+    return asyncio.run(chat_session(api_key, repo_context=repo_context))

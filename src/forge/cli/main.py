@@ -319,9 +319,154 @@ def config(global_config):
 
 
 @cli.command()
+@click.argument('repo_path', default='.', type=click.Path(exists=True))
+@click.option('--force', '-f', is_flag=True, help="Force re-analysis (ignore cache)")
+@click.option('--json', 'output_json', is_flag=True, help="Output as JSON")
+@click.option('--verbose', '-v', is_flag=True, help="Show detailed analysis")
+def analyze(repo_path, force, output_json, verbose):
+    """Analyze repository structure and patterns
+
+    Examines an existing codebase to understand:
+    - Directory structure and naming conventions
+    - Languages and file types
+    - Dependencies and package manager
+    - Testing setup and patterns
+    - Code patterns and frameworks
+
+    This analysis is used to inform code generation so that
+    new code respects existing conventions.
+
+    Example:
+        forge analyze .
+        forge analyze /path/to/project --verbose
+        forge analyze . --json > analysis.json
+    """
+    from forge.layers.repository_analyzer import RepositoryAnalyzer, RepositoryAnalyzerError
+    from rich.table import Table
+    from rich.panel import Panel
+    import json as json_module
+
+    try:
+        console.print("\n[bold blue]⚒ Forge Repository Analysis[/bold blue]\n")
+
+        analyzer = RepositoryAnalyzer()
+        repo = Path(repo_path).resolve()
+
+        console.print(f"[dim]Analyzing: {repo}[/dim]")
+        if force:
+            console.print("[dim]Force re-analysis (ignoring cache)[/dim]")
+
+        with console.status("[bold green]Analyzing repository...[/bold green]"):
+            context = analyzer.analyze(repo, force=force)
+
+        if output_json:
+            # Output JSON for programmatic use
+            console.print(json_module.dumps(context.to_dict(), indent=2))
+            return
+
+        # Display results
+        console.print()
+        console.print(Panel(
+            f"[bold]{context.project_name}[/bold]\n\n"
+            f"Primary Language: [cyan]{context.primary_language}[/cyan]\n"
+            f"Files: {context.file_count} | Lines: {context.total_lines:,}",
+            title="📁 Repository Overview",
+            border_style="blue"
+        ))
+
+        # Languages table
+        if context.languages:
+            lang_table = Table(title="Languages", border_style="dim")
+            lang_table.add_column("Language", style="cyan")
+            lang_table.add_column("Files", justify="right")
+            lang_table.add_column("Lines", justify="right")
+
+            for lang, stats in sorted(
+                context.languages.items(),
+                key=lambda x: x[1].total_lines,
+                reverse=True
+            )[:8]:
+                lang_table.add_row(lang, str(stats.count), f"{stats.total_lines:,}")
+
+            console.print(lang_table)
+
+        # Naming conventions
+        nc = context.naming_conventions
+        console.print(f"\n[bold]Naming Conventions:[/bold]")
+        console.print(f"  Files: {nc.file_naming}")
+        console.print(f"  Functions: {nc.function_naming}")
+        console.print(f"  Classes: {nc.class_naming}")
+
+        # Dependencies
+        if context.dependency_info.package_manager:
+            console.print(f"\n[bold]Dependencies:[/bold]")
+            console.print(f"  Package Manager: {context.dependency_info.package_manager}")
+            if context.dependency_info.python_version:
+                console.print(f"  Python: {context.dependency_info.python_version}")
+            if context.dependency_info.node_version:
+                console.print(f"  Node: {context.dependency_info.node_version}")
+
+            if verbose and context.dependency_info.dependencies:
+                dep_count = len(context.dependency_info.dependencies)
+                console.print(f"  Dependencies: {dep_count}")
+                for name, version in list(context.dependency_info.dependencies.items())[:10]:
+                    console.print(f"    - {name}: {version}")
+                if dep_count > 10:
+                    console.print(f"    ... and {dep_count - 10} more")
+
+        # Testing
+        if context.test_info.framework:
+            console.print(f"\n[bold]Testing:[/bold]")
+            console.print(f"  Framework: {context.test_info.framework}")
+            console.print(f"  Directory: {context.test_info.test_directory or 'Not found'}")
+            console.print(f"  Test Files: {context.test_info.test_count}")
+
+        # Patterns
+        if context.code_patterns:
+            console.print(f"\n[bold]Detected Patterns:[/bold]")
+            for pattern in context.code_patterns:
+                console.print(f"  • {pattern}")
+
+        # Key directories
+        if verbose and context.key_directories:
+            console.print(f"\n[bold]Key Directories:[/bold]")
+            for d in context.key_directories:
+                console.print(f"  📂 {d}/")
+
+        # Config files
+        if verbose and context.config_files:
+            console.print(f"\n[bold]Config Files:[/bold]")
+            for f in context.config_files[:10]:
+                console.print(f"  📄 {f}")
+
+        console.print()
+        print_success("Analysis complete!")
+        console.print(f"\n💡 Use this with planning: [cyan]forge chat --repo {repo_path}[/cyan]\n")
+
+    except RepositoryAnalyzerError as e:
+        print_error(f"Analysis failed: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print_error(f"Unexpected error: {e}")
+        logger.exception("Analysis error")
+        sys.exit(1)
+
+
+@cli.command()
 @click.option('--project-id', '-p', help="Resume existing project session")
-def chat(project_id):
-    """Start interactive planning session"""
+@click.option('--repo', '-r', type=click.Path(exists=True), help="Analyze repository before planning")
+def chat(project_id, repo):
+    """Start interactive planning session
+
+    For new projects:
+        forge chat
+
+    For existing codebases (analyzes repo first):
+        forge chat --repo /path/to/project
+
+    To resume a previous session:
+        forge chat --project-id <id>
+    """
     import os
     from forge.cli.interactive import simple_chat
 
@@ -335,9 +480,36 @@ def chat(project_id):
         console.print("\nOr add to your shell profile (~/.zshrc or ~/.bashrc)")
         sys.exit(1)
 
+    # Analyze repository if specified
+    repo_context = None
+    if repo:
+        from forge.layers.repository_analyzer import RepositoryAnalyzer
+
+        console.print("\n[bold blue]⚒ Analyzing Repository...[/bold blue]\n")
+
+        try:
+            analyzer = RepositoryAnalyzer()
+            repo_path = Path(repo).resolve()
+
+            with console.status("[bold green]Analyzing codebase...[/bold green]"):
+                repo_context = analyzer.analyze(repo_path)
+
+            console.print(f"[green]✓[/green] Analyzed: [bold]{repo_context.project_name}[/bold]")
+            console.print(f"  Primary language: {repo_context.primary_language}")
+            console.print(f"  Files: {repo_context.file_count} | Lines: {repo_context.total_lines:,}")
+
+            if repo_context.code_patterns:
+                console.print(f"  Patterns: {', '.join(repo_context.code_patterns[:3])}")
+
+            console.print()
+
+        except Exception as e:
+            print_warning(f"Repository analysis failed: {e}")
+            console.print("[dim]Continuing without repository context...[/dim]\n")
+
     try:
-        # Start interactive chat session
-        summary = simple_chat(api_key)
+        # Start interactive chat session with optional repo context
+        summary = simple_chat(api_key, repo_context=repo_context)
 
         if summary:
             console.print("\n[green]✓[/green] Planning session completed successfully!")

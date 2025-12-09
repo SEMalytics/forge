@@ -68,7 +68,7 @@ poetry env use python3.11
 **Symptoms**:
 ```
 FileNotFoundError: Pattern file not found: 00_KB3_Core.md
-Expected location: ../knowledgeforge-patterns/00_KB3_Core.md
+Expected location: patterns/00_KB3_Core.md
 ```
 
 **Solution**:

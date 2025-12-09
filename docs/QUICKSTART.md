@@ -130,7 +130,7 @@ git:
   commit_format: conventional
 
 knowledgeforge:
-  patterns_dir: ../knowledgeforge-patterns
+  patterns_dir: patterns
   embedding_model: all-MiniLM-L6-v2
   cache_size: 128
   search_method: hybrid
@@ -306,11 +306,11 @@ If patterns aren't found:
 
 ```bash
 # Check patterns directory
-ls ../knowledgeforge-patterns/*.md
+ls patterns/*.md
 
 # Should show 28 .md files
 # If not, copy patterns:
-mkdir -p ../knowledgeforge-patterns
+mkdir -p patterns
 # Copy your KF pattern files there
 ```
 
@@ -345,7 +345,7 @@ chmod 755 .forge/
 - **Sessions**: `.forge/sessions/*.json`
 - **Logs**: `.forge/forge.log` (if enabled)
 - **Config**: `./forge.yaml` (project) or `~/.forge/config.yaml` (global)
-- **Patterns**: `../knowledgeforge-patterns/*.md` (referenced)
+- **Patterns**: `patterns/*.md` (referenced)
 
 ## Next Steps
 

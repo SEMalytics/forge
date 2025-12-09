@@ -108,13 +108,13 @@ Forge requires KnowledgeForge patterns in a sibling directory:
 
 ```bash
 # Create patterns directory
-mkdir -p ../knowledgeforge-patterns
+mkdir -p patterns
 
 # Copy your .md pattern files there
-cp /path/to/patterns/*.md ../knowledgeforge-patterns/
+cp /path/to/patterns/*.md patterns/
 
 # Verify patterns
-ls ../knowledgeforge-patterns/*.md | wc -l
+ls patterns/*.md | wc -l
 # Should show: 28
 ```
 
@@ -250,11 +250,11 @@ If patterns aren't found:
 
 ```bash
 # Check directory structure
-ls -la ../knowledgeforge-patterns/
+ls -la patterns/
 
 # Should show .md files
 # If not, create and populate:
-mkdir -p ../knowledgeforge-patterns
+mkdir -p patterns
 # Copy your pattern files
 ```
 
@@ -370,7 +370,7 @@ After installation, verify:
 - [ ] `poetry --version` shows Poetry 2.2.1+
 - [ ] `poetry run forge --version` shows forge 1.0.0
 - [ ] `poetry run forge doctor` passes all checks
-- [ ] `ls ../knowledgeforge-patterns/*.md` shows 28 files
+- [ ] `ls patterns/*.md` shows 28 files
 - [ ] `poetry run pytest` shows 26 tests passing
 - [ ] `.forge/patterns.db` exists after running `forge doctor`
 

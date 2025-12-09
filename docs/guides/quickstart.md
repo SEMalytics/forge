@@ -6,7 +6,7 @@ Get up and running with Forge in 5 minutes.
 
 - Python 3.11+ installed
 - Poetry installed (see [Installation Guide](installation.md))
-- KnowledgeForge patterns in `../knowledgeforge-patterns/`
+- KnowledgeForge patterns in `patterns/`
 
 ## 5-Minute Quick Start
 
@@ -154,11 +154,11 @@ After finding patterns, view them:
 
 ```bash
 # Pattern files are in sibling directory
-cat ../knowledgeforge-patterns/01_Core_DataTransfer.md
-less ../knowledgeforge-patterns/02_Workflows_Orchestration.md
+cat patterns/01_Core_DataTransfer.md
+less patterns/02_Workflows_Orchestration.md
 
 # Or use your favorite editor
-code ../knowledgeforge-patterns/
+code patterns/
 ```
 
 ### Create Multiple Projects
@@ -231,7 +231,7 @@ generator:
   timeout: 300
 
 knowledgeforge:
-  patterns_dir: ../knowledgeforge-patterns
+  patterns_dir: patterns
   search_method: hybrid
   cache_size: 128
 
@@ -338,7 +338,7 @@ forge config [--global-config]
 
 - **Databases**: `.forge/patterns.db`, `.forge/state.db`
 - **Config**: `./forge.yaml` (project) or `~/.forge/config.yaml` (global)
-- **Patterns**: `../knowledgeforge-patterns/*.md`
+- **Patterns**: `patterns/*.md`
 - **Logs**: `.forge/forge.log`
 
 ### Getting Help
@@ -362,11 +362,11 @@ forge --version
 
 ```bash
 # Check patterns directory
-ls ../knowledgeforge-patterns/*.md
+ls patterns/*.md
 
 # Should show 28 files
 # If not:
-mkdir -p ../knowledgeforge-patterns
+mkdir -p patterns
 # Copy your .md files there
 ```
 
@@ -407,7 +407,7 @@ The 28 KnowledgeForge patterns contain valuable best practices:
 
 ```bash
 # List all patterns
-ls ../knowledgeforge-patterns/
+ls patterns/
 
 # Search for specific topics
 forge search "your topic" --max-results 10

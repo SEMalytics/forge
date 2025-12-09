@@ -127,14 +127,14 @@ sudo chown -R $USER:$USER .
 
 ```bash
 # Check patterns directory
-ls ../knowledgeforge-patterns/*.md
+ls patterns/*.md
 
 # If empty, create and populate
-mkdir -p ../knowledgeforge-patterns
-cp /path/to/patterns/*.md ../knowledgeforge-patterns/
+mkdir -p patterns
+cp /path/to/patterns/*.md patterns/
 
 # Verify count
-ls ../knowledgeforge-patterns/*.md | wc -l
+ls patterns/*.md | wc -l
 # Should show: 28
 
 # Reinitialize
@@ -559,7 +559,7 @@ FAILED tests/test_pattern_store.py::test_search
 poetry run pytest tests/test_pattern_store.py::test_search -v -s
 
 # Check if patterns exist
-ls ../knowledgeforge-patterns/*.md | wc -l
+ls patterns/*.md | wc -l
 
 # Recreate test fixtures
 rm -rf .pytest_cache
@@ -658,7 +658,7 @@ $(cat forge.yaml 2>&1)
 
 --- File System ---
 $(ls -la .forge/ 2>&1)
-$(ls -la ../knowledgeforge-patterns/ | head -20 2>&1)
+$(ls -la patterns/ | head -20 2>&1)
 
 --- Database Info ---
 $(sqlite3 .forge/patterns.db "SELECT COUNT(*) FROM patterns" 2>&1)

@@ -3,16 +3,21 @@ Conversational planning agent using Claude API
 
 This module provides an interactive planning agent that helps users
 define their software projects through natural conversation.
+
+Includes repository analysis for existing projects to ensure
+generated code respects existing conventions and patterns.
 """
 
 from anthropic import Anthropic
 from typing import List, Dict, Optional, AsyncIterator, Any
+from pathlib import Path
 import json
 import re
 from datetime import datetime
 
 from forge.utils.logger import logger
 from forge.utils.errors import ForgeError
+from forge.layers.repository_analyzer import RepositoryAnalyzer, RepositoryContext
 
 
 class PlanningError(ForgeError):
@@ -50,7 +55,9 @@ class PlanningAgent:
                 "started_at": datetime.now().isoformat(),
                 "turns": 0
             }
-            self.codebase_context = None  # Optional context about existing codebase
+            self.codebase_context: Optional[str] = None  # Formatted context string
+            self.repository_context: Optional[RepositoryContext] = None  # Full analysis
+            self._analyzer = RepositoryAnalyzer()
             logger.info(f"Initialized PlanningAgent with model: {model}")
         except Exception as e:
             raise PlanningError(f"Failed to initialize planning agent: {e}")
@@ -345,6 +352,66 @@ Return ONLY valid JSON, no other text."""
             "turns": 0
         }
         logger.info("Cleared conversation history")
+
+    def analyze_repository(self, repo_path: str, force: bool = False) -> RepositoryContext:
+        """
+        Analyze an existing repository to understand its structure and patterns.
+
+        This should be called before starting a planning conversation for
+        projects that are modifying an existing codebase.
+
+        Args:
+            repo_path: Path to the repository root
+            force: Force re-analysis even if cached
+
+        Returns:
+            RepositoryContext with analysis results
+
+        Raises:
+            PlanningError: If analysis fails
+        """
+        try:
+            path = Path(repo_path).resolve()
+            logger.info(f"Analyzing repository: {path}")
+
+            # Run analysis
+            self.repository_context = self._analyzer.analyze(path, force=force)
+
+            # Set formatted context for prompts
+            self.codebase_context = self.repository_context.to_prompt_context()
+
+            logger.info(
+                f"Repository analysis complete: "
+                f"{self.repository_context.file_count} files, "
+                f"primary language: {self.repository_context.primary_language}"
+            )
+
+            return self.repository_context
+
+        except Exception as e:
+            raise PlanningError(f"Failed to analyze repository: {e}")
+
+    def set_codebase_context(self, context: str):
+        """
+        Set codebase context manually.
+
+        Use this when you have pre-formatted context or want to
+        provide custom context instead of running analysis.
+
+        Args:
+            context: Formatted context string
+        """
+        self.codebase_context = context
+        logger.info("Set manual codebase context")
+
+    def get_repository_context(self) -> Optional[RepositoryContext]:
+        """
+        Get the full repository analysis context.
+
+        Returns:
+            RepositoryContext if analysis was run, None otherwise
+        """
+        return self.repository_context
 
     def get_conversation_length(self) -> int:
         """Get number of conversation turns."""

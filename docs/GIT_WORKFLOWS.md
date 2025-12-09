@@ -576,6 +576,6 @@ print(f"Created PR: {pr.html_url}")
 
 ## Related Documentation
 
-- [Implementation Guide](../knowledgeforge-patterns/00_KB3_ImplementationGuide_3.2_GitIntegration.md)
+- [Implementation Guide](patterns/00_KB3_ImplementationGuide_3.2_GitIntegration.md)
 - [Failure Analysis System](./FAILURE_ANALYSIS_SYSTEM.md)
 - [CLI Reference](./CLI_REFERENCE.md)

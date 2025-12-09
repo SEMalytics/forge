@@ -522,7 +522,7 @@ forge init "Project Name" --description "Description"
 forge search "project keywords" --max-results 10
 
 # 3. Review patterns
-cat ../knowledgeforge-patterns/relevant-pattern.md
+cat patterns/relevant-pattern.md
 
 # 4. Check status
 forge status project-name-20251207

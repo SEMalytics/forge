@@ -34,11 +34,12 @@ forge-build/
 │   │   ├── testing/                # Test generation + Docker runner
 │   │   ├── cli/                    # Click CLI
 │   │   └── utils/                  # Logging, errors, retries
+│   ├── knowledgeforge/             # KnowledgeForge 4.0 agent specs (7 files)
+│   ├── patterns/                   # Curated operational patterns
 │   ├── tests/                      # Comprehensive test suite
 │   ├── examples/                   # Example projects
 │   ├── pyproject.toml
 │   └── CLAUDE.md                   # This file
-├── knowledgeforge-patterns/        # Reference: 28 KF 3.2 files (sibling dir)
 └── compound-engineering/           # Reference: CE plugin (sibling dir)
 ```
 
@@ -335,12 +336,14 @@ class StateManager:
 # Reference KnowledgeForge patterns
 class PatternStore:
     """
-    Hybrid search over KF patterns.
-    
-    Patterns located at: ../knowledgeforge-patterns/
+    Hybrid search over patterns.
+
+    Patterns located at:
+    - knowledgeforge/      (KF 4.0 agent specifications)
+    - patterns/            (Curated operational patterns)
     Uses FTS5 + sentence-transformers for hybrid search.
     """
-    
+
     def search(self, query: str, method: str = 'hybrid') -> List[Dict]:
         """Search patterns using keyword + semantic search."""
         pass
@@ -382,17 +385,23 @@ import logging
 logger = logging.getLogger(__name__)
 
 def load_pattern(filename: str) -> str:
-    """Load KF pattern file."""
-    pattern_path = Path(f"../knowledgeforge-patterns/{filename}")
-    
-    if not pattern_path.exists():
-        available = list(Path("../knowledgeforge-patterns").glob("*.md"))
+    """Load pattern file from knowledgeforge/ or patterns/ directory."""
+    # Check KF 4.0 specs first, then operational patterns
+    search_paths = [
+        Path(f"knowledgeforge/{filename}"),
+        Path(f"patterns/{filename}"),
+    ]
+
+    for pattern_path in search_paths:
+        if pattern_path.exists():
+            break
+    else:
+        kf_patterns = list(Path("knowledgeforge").glob("*.md"))
+        op_patterns = list(Path("patterns").rglob("*.md"))
         raise PatternNotFoundError(
             f"Pattern not found: {filename}\n"
-            f"Expected: {pattern_path}\n"
-            f"Available patterns: {len(available)}\n"
-            f"\nFix: Ensure KF patterns are in sibling directory:\n"
-            f"  cp /mnt/project/*.md ../knowledgeforge-patterns/"
+            f"Searched: {[str(p) for p in search_paths]}\n"
+            f"Available: {len(kf_patterns)} KF specs, {len(op_patterns)} patterns"
         )
     
     try:
@@ -930,13 +939,28 @@ pre-commit run --all-files
 * **API\_REFERENCE.md** \- Complete API docs  
 * **CONTRIBUTING.md** \- Development guide
 
-### **KnowledgeForge Patterns**
+### **KnowledgeForge 4.0** (Agent Specifications)
 
-Located in: `../knowledgeforge-patterns/`
+Located in: `knowledgeforge/`
 
-* `00_KB3_Core.md` \- System architecture  
-* `00_KB3_ImplementationGuide.md` \- Best practices  
-* `04_TestScenarios.md` \- Testing patterns
+* `00_Project_Instructions.md` \- Core behavioral framework
+* `01_Navigator_Agent.md` \- Intent routing
+* `02_Builder_Agent.md` \- PDIA agent creation method
+* `03_Coordination_Patterns.md` \- Multi-agent orchestration
+* `04_Specification_Templates.md` \- Reusable specification formats
+* `05_Expert_Agent_Example.md` \- Domain specialist pattern
+* `06_Quick_Reference.md` \- Quick lookup guide
+
+### **Operational Patterns**
+
+Located in: `patterns/`
+
+* `core/architecture.md` \- Five-layer system architecture
+* `core/data-transfer.md` \- Compression, chunking, streaming
+* `agents/catalog.md` \- Agent registry and coordination
+* `workflows/orchestration.md` \- Master orchestrator pattern
+* `testing/scenarios.md` \- Comprehensive test scenarios
+* `operations/security.md` \- Authentication, authorization
 
 ---
 

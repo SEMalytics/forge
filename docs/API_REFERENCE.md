@@ -459,7 +459,7 @@ deployment:
 
 # KnowledgeForge settings
 knowledgeforge:
-  patterns_dir: ../knowledgeforge-patterns
+  patterns_dir: patterns
   cache_embeddings: true
   max_patterns: 10
 ```
