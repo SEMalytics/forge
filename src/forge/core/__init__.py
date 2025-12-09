@@ -2,7 +2,7 @@
 Core components for Forge
 
 Provides configuration, state management, orchestration, context handling,
-streaming output support, and caching for incremental builds.
+streaming output support, caching for incremental builds, and resilience patterns.
 """
 
 from forge.core.config import ForgeConfig
@@ -28,6 +28,29 @@ from forge.core.cache import (
     GenerationCache,
     IncrementalBuildDetector,
     CachedGenerator
+)
+from forge.core.resilience import (
+    ResilienceError,
+    RetryExhaustedError,
+    CircuitOpenError,
+    CheckpointError,
+    ErrorCategory,
+    ClassifiedError,
+    ErrorClassifier,
+    RetryStrategy,
+    RetryConfig,
+    RetryCalculator,
+    CircuitState,
+    CircuitBreakerConfig,
+    CircuitBreaker,
+    Checkpoint,
+    CheckpointManager,
+    ResilientExecutor,
+    CircuitBreakerRegistry,
+    circuit_registry,
+    with_retry,
+    with_circuit_breaker,
+    with_fallback
 )
 
 __all__ = [
@@ -59,4 +82,26 @@ __all__ = [
     'GenerationCache',
     'IncrementalBuildDetector',
     'CachedGenerator',
+    # Resilience
+    'ResilienceError',
+    'RetryExhaustedError',
+    'CircuitOpenError',
+    'CheckpointError',
+    'ErrorCategory',
+    'ClassifiedError',
+    'ErrorClassifier',
+    'RetryStrategy',
+    'RetryConfig',
+    'RetryCalculator',
+    'CircuitState',
+    'CircuitBreakerConfig',
+    'CircuitBreaker',
+    'Checkpoint',
+    'CheckpointManager',
+    'ResilientExecutor',
+    'CircuitBreakerRegistry',
+    'circuit_registry',
+    'with_retry',
+    'with_circuit_breaker',
+    'with_fallback',
 ]

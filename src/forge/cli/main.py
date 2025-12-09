@@ -2829,5 +2829,248 @@ def stats(project_id):
         sys.exit(1)
 
 
+# =============================================================================
+# Resilience Commands
+# =============================================================================
+
+@cli.group()
+def resilience():
+    """Resilience and error recovery management."""
+    pass
+
+
+@resilience.command("circuits")
+def resilience_circuits():
+    """Show circuit breaker status."""
+    from forge.core.resilience import circuit_registry
+    from rich.table import Table
+
+    circuits = circuit_registry.list_circuits()
+
+    if not circuits:
+        console.print("[yellow]No circuit breakers registered[/yellow]")
+        return
+
+    table = Table(title="Circuit Breaker Status")
+    table.add_column("Name", style="cyan")
+    table.add_column("State", style="bold")
+    table.add_column("Total Calls")
+    table.add_column("Successful")
+    table.add_column("Failed")
+    table.add_column("Rejected")
+
+    for name, circuit in circuits.items():
+        stats = circuit.stats
+        state_color = {
+            "closed": "green",
+            "open": "red",
+            "half_open": "yellow"
+        }.get(circuit.state.value, "white")
+
+        table.add_row(
+            name,
+            f"[{state_color}]{circuit.state.value.upper()}[/{state_color}]",
+            str(stats.total_calls),
+            str(stats.successful_calls),
+            str(stats.failed_calls),
+            str(stats.rejected_calls)
+        )
+
+    console.print(table)
+
+
+@resilience.command("reset")
+@click.argument("circuit_name", required=False)
+@click.option("--all", "reset_all", is_flag=True, help="Reset all circuits")
+def resilience_reset(circuit_name: str, reset_all: bool):
+    """Reset circuit breaker(s) to closed state."""
+    from forge.core.resilience import circuit_registry
+
+    if reset_all:
+        circuit_registry.reset_all()
+        print_success("All circuit breakers reset to CLOSED")
+    elif circuit_name:
+        circuit = circuit_registry.get(circuit_name)
+        if circuit:
+            circuit.reset()
+            print_success(f"Circuit '{circuit_name}' reset to CLOSED")
+        else:
+            print_error(f"Circuit '{circuit_name}' not found")
+    else:
+        print_error("Specify circuit name or use --all")
+
+
+@resilience.command("checkpoints")
+@click.argument("operation_id", required=False)
+@click.option("--dir", "checkpoint_dir", type=click.Path(), help="Checkpoint directory")
+def resilience_checkpoints(operation_id: str, checkpoint_dir: str):
+    """List saved checkpoints."""
+    from forge.core.resilience import CheckpointManager
+    from rich.table import Table
+    from datetime import datetime
+
+    manager = CheckpointManager(
+        checkpoint_dir=Path(checkpoint_dir) if checkpoint_dir else None
+    )
+
+    if operation_id:
+        # List checkpoints for specific operation
+        checkpoints = manager.list_checkpoints(operation_id)
+
+        if not checkpoints:
+            console.print(f"[yellow]No checkpoints found for '{operation_id}'[/yellow]")
+            return
+
+        table = Table(title=f"Checkpoints for {operation_id}")
+        table.add_column("ID", style="cyan")
+        table.add_column("Stage", style="bold")
+        table.add_column("Created At")
+        table.add_column("State Keys")
+
+        for cp in checkpoints:
+            created = datetime.fromisoformat(cp.created_at)
+            table.add_row(
+                cp.checkpoint_id[:20] + "...",
+                cp.stage,
+                created.strftime("%Y-%m-%d %H:%M:%S"),
+                ", ".join(cp.state.keys())
+            )
+
+        console.print(table)
+
+    else:
+        # List all operations with checkpoints
+        checkpoint_path = manager.checkpoint_dir
+        if not checkpoint_path.exists():
+            console.print("[yellow]No checkpoints found[/yellow]")
+            return
+
+        operations = [d.name for d in checkpoint_path.iterdir() if d.is_dir()]
+
+        if not operations:
+            console.print("[yellow]No operations with checkpoints[/yellow]")
+            return
+
+        table = Table(title="Operations with Checkpoints")
+        table.add_column("Operation ID", style="cyan")
+        table.add_column("Checkpoints")
+        table.add_column("Latest Stage")
+
+        for op_id in operations:
+            checkpoints = manager.list_checkpoints(op_id)
+            latest = checkpoints[0] if checkpoints else None
+            table.add_row(
+                op_id,
+                str(len(checkpoints)),
+                latest.stage if latest else "-"
+            )
+
+        console.print(table)
+
+
+@resilience.command("restore")
+@click.argument("operation_id")
+@click.option("--stage", help="Specific stage to restore")
+def resilience_restore(operation_id: str, stage: str):
+    """Show checkpoint data for restoration."""
+    from forge.core.resilience import CheckpointManager
+    import json
+
+    manager = CheckpointManager()
+
+    if stage:
+        checkpoint = manager.load_by_stage(operation_id, stage)
+    else:
+        checkpoint = manager.load_latest(operation_id)
+
+    if not checkpoint:
+        print_error(f"No checkpoint found for '{operation_id}'")
+        return
+
+    console.print(f"\n[bold cyan]Checkpoint: {checkpoint.checkpoint_id}[/bold cyan]")
+    console.print(f"Operation: {checkpoint.operation_id}")
+    console.print(f"Stage: {checkpoint.stage}")
+    console.print(f"Created: {checkpoint.created_at}")
+
+    console.print("\n[bold]State:[/bold]")
+    console.print(json.dumps(checkpoint.state, indent=2))
+
+    if checkpoint.metadata:
+        console.print("\n[bold]Metadata:[/bold]")
+        console.print(json.dumps(checkpoint.metadata, indent=2))
+
+
+@resilience.command("clean")
+@click.argument("operation_id")
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation")
+def resilience_clean(operation_id: str, yes: bool):
+    """Delete checkpoints for an operation."""
+    from forge.core.resilience import CheckpointManager
+
+    manager = CheckpointManager()
+    checkpoints = manager.list_checkpoints(operation_id)
+
+    if not checkpoints:
+        print_warning(f"No checkpoints found for '{operation_id}'")
+        return
+
+    if not yes:
+        if not click.confirm(f"Delete {len(checkpoints)} checkpoints for '{operation_id}'?"):
+            console.print("[yellow]Cancelled[/yellow]")
+            return
+
+    count = manager.delete_checkpoints(operation_id)
+    print_success(f"Deleted {count} checkpoints")
+
+
+@resilience.command("stats")
+def resilience_stats():
+    """Show resilience statistics."""
+    from forge.core.resilience import circuit_registry, CheckpointManager
+    from rich.panel import Panel
+
+    # Circuit breaker stats
+    circuits = circuit_registry.list_circuits()
+    total_calls = sum(c.stats.total_calls for c in circuits.values())
+    total_failures = sum(c.stats.failed_calls for c in circuits.values())
+    total_rejected = sum(c.stats.rejected_calls for c in circuits.values())
+
+    circuit_stats = f"""
+[bold]Circuit Breakers:[/bold]
+  Registered: {len(circuits)}
+  Total Calls: {total_calls}
+  Failed Calls: {total_failures}
+  Rejected Calls: {total_rejected}
+  Success Rate: {(total_calls - total_failures) / total_calls * 100:.1f}% (of allowed calls)
+""" if total_calls > 0 else f"""
+[bold]Circuit Breakers:[/bold]
+  Registered: {len(circuits)}
+  No calls recorded yet
+"""
+
+    # Checkpoint stats
+    manager = CheckpointManager()
+    checkpoint_path = manager.checkpoint_dir
+
+    if checkpoint_path.exists():
+        operations = [d for d in checkpoint_path.iterdir() if d.is_dir()]
+        total_checkpoints = sum(
+            len(list(op.glob("*.json"))) for op in operations
+        )
+        checkpoint_stats = f"""
+[bold]Checkpoints:[/bold]
+  Directory: {checkpoint_path}
+  Operations: {len(operations)}
+  Total Checkpoints: {total_checkpoints}
+"""
+    else:
+        checkpoint_stats = """
+[bold]Checkpoints:[/bold]
+  No checkpoints stored
+"""
+
+    console.print(Panel(circuit_stats.strip() + "\n" + checkpoint_stats.strip(), title="Resilience Statistics"))
+
+
 if __name__ == '__main__':
     main()
