@@ -1563,6 +1563,178 @@ def explain(concept):
 
 
 @cli.command()
+@click.option('--project-id', '-p', required=True, help="Project ID to triage")
+@click.option('--session', '-s', help="Resume existing triage session")
+@click.option('--batch', '-b', is_flag=True, help="Use batch mode (show all at once)")
+@click.option('--auto', '-a', is_flag=True, help="Auto-approve critical issues")
+@click.option('--list', 'list_sessions', is_flag=True, help="List triage sessions for project")
+def triage(project_id, session, batch, auto, list_sessions):
+    """Interactive triage of test failures and issues
+
+    Review findings one-by-one and decide which fixes to apply.
+    Separates finding review from fix application.
+
+    Example:
+        forge triage -p my-project
+        forge triage -p my-project --batch
+        forge triage -p my-project --auto
+        forge triage -p my-project --list
+    """
+    from forge.layers.triage import TriageWorkflow, TriageError
+    from forge.layers.failure_analyzer import FailureAnalyzer
+    from forge.core.state_manager import StateManager
+    from rich.table import Table
+
+    try:
+        console.print("\n[bold blue]⚖ Forge Triage Workflow[/bold blue]\n")
+
+        # Initialize workflow
+        workflow = TriageWorkflow(console=console)
+
+        # List sessions mode
+        if list_sessions:
+            sessions = workflow.list_sessions(project_id)
+
+            if not sessions:
+                console.print(f"[yellow]No triage sessions found for project: {project_id}[/yellow]")
+                return
+
+            table = Table(title=f"Triage Sessions for {project_id}", border_style="blue")
+            table.add_column("Session ID", style="cyan")
+            table.add_column("Created", style="dim")
+            table.add_column("Total", justify="right")
+            table.add_column("Approved", justify="right", style="green")
+            table.add_column("Pending", justify="right", style="yellow")
+
+            for sess in sessions:
+                summary = sess.get('summary', {})
+                table.add_row(
+                    sess['session_id'],
+                    sess['created_at'][:19],
+                    str(summary.get('total', 0)),
+                    str(summary.get('approved', 0)),
+                    str(summary.get('pending', 0))
+                )
+
+            console.print(table)
+            console.print(f"\n💡 Resume a session: [cyan]forge triage -p {project_id} -s <session-id>[/cyan]\n")
+            return
+
+        # Load project
+        state = StateManager()
+        project = state.get_project(project_id)
+
+        if not project:
+            print_error(f"Project not found: {project_id}")
+            sys.exit(1)
+
+        console.print(f"[bold]Project:[/bold] {project.name}")
+
+        # Resume existing session or create new
+        if session:
+            console.print(f"[dim]Resuming session: {session}[/dim]\n")
+            triage_session = workflow.load_session(session)
+
+            if not triage_session:
+                print_error(f"Session not found: {session}")
+                sys.exit(1)
+
+        else:
+            # Analyze failures to get suggestions
+            console.print("[dim]Analyzing project failures...[/dim]")
+
+            # Load test results from project
+            project_output_dir = Path(".forge/output") / project_id
+
+            # Try to get failure suggestions from test results
+            analyzer = FailureAnalyzer()
+
+            # Check if there are test results to analyze
+            test_results_file = Path(".forge") / "test_results" / f"{project_id}.json"
+
+            if test_results_file.exists():
+                import json as json_module
+                test_data = json_module.loads(test_results_file.read_text())
+
+                # Analyze failures
+                with console.status("[bold green]Analyzing failures..."):
+                    suggestions = analyzer.analyze_failures(test_data)
+
+                if not suggestions:
+                    console.print("[green]✓ No issues found to triage![/green]")
+                    state.close()
+                    return
+
+                console.print(f"[dim]Found {len(suggestions)} issues to triage[/dim]\n")
+
+                # Create new session
+                triage_session = workflow.create_session(project_id, suggestions)
+
+            else:
+                # No test results - check for deferred items from previous sessions
+                previous_sessions = workflow.list_sessions(project_id)
+
+                if previous_sessions:
+                    # Check for deferred items
+                    console.print("[yellow]No new test results found.[/yellow]")
+                    console.print(f"\nFound {len(previous_sessions)} previous session(s).")
+                    console.print("Use [cyan]--list[/cyan] to see sessions or [cyan]--session[/cyan] to resume.")
+                else:
+                    console.print("[yellow]No test results found.[/yellow]")
+                    console.print(f"\nRun tests first: [cyan]forge test -p {project_id}[/cyan]")
+
+                state.close()
+                return
+
+        # Auto-triage if requested
+        if auto:
+            console.print("[dim]Running auto-triage for critical issues...[/dim]\n")
+            triage_session = workflow.auto_triage(
+                triage_session,
+                approve_critical=True,
+                approve_high=True,
+                min_confidence=0.8
+            )
+
+            if triage_session.pending_count == 0:
+                console.print("[green]✓ All findings auto-triaged![/green]")
+                workflow._print_session_summary(triage_session)
+                state.close()
+                workflow.close()
+                return
+
+        # Run interactive triage
+        triage_session = workflow.run_interactive_triage(
+            session=triage_session,
+            batch_mode=batch
+        )
+
+        # Get approved suggestions
+        approved = workflow.get_approved_suggestions(triage_session)
+
+        if approved:
+            console.print(f"\n[bold]Ready to apply {len(approved)} fixes[/bold]")
+            console.print(f"Run: [cyan]forge iterate -p {project_id}[/cyan] to apply fixes\n")
+        else:
+            console.print("\n[dim]No fixes approved in this session[/dim]\n")
+
+        # Cleanup
+        state.close()
+        workflow.close()
+
+    except TriageError as e:
+        print_error(f"Triage failed: {e}")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        console.print("\n\n[yellow]Triage interrupted[/yellow]")
+        sys.exit(130)
+    except Exception as e:
+        print_error(f"Triage failed: {e}")
+        logger.exception("Triage error")
+        sys.exit(1)
+
+
+@cli.command()
 @click.option('--project-id', '-p', help="Show stats for specific project")
 def stats(project_id):
     """Show project statistics"""

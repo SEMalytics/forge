@@ -25,6 +25,7 @@ from rich.panel import Panel
 from forge.layers.failure_analyzer import FailureAnalyzer, FixSuggestion, Priority
 from forge.layers.fix_generator import FixGenerator, GeneratedFix
 from forge.layers.testing import TestingOrchestrator, TestingConfig, ComprehensiveTestReport
+from forge.layers.triage import TriageWorkflow, TriageSession
 from forge.core.state_manager import StateManager
 from forge.utils.logger import logger
 from forge.utils.errors import ForgeError
@@ -129,6 +130,7 @@ class ReviewLayer:
             config=self.testing_config,
             console=self.console
         )
+        self.triage_workflow = TriageWorkflow(console=self.console)
 
         logger.info("Initialized ReviewLayer")
 
@@ -139,7 +141,9 @@ class ReviewLayer:
         tech_stack: Optional[List[str]] = None,
         project_context: str = "",
         max_iterations: int = 5,
-        output_dir: Optional[Path] = None
+        output_dir: Optional[Path] = None,
+        use_triage: bool = False,
+        triage_session: Optional[TriageSession] = None
     ) -> ReviewSummary:
         """
         Iterate until all tests pass or max iterations reached.
@@ -151,6 +155,8 @@ class ReviewLayer:
             project_context: Project description
             max_iterations: Maximum iteration attempts
             output_dir: Directory for code output
+            use_triage: If True, use triage workflow for fix approval
+            triage_session: Existing triage session with pre-approved fixes
 
         Returns:
             ReviewSummary with complete iteration history
@@ -199,7 +205,9 @@ class ReviewLayer:
                     tech_stack=tech_stack,
                     project_context=project_context,
                     output_dir=output_dir,
-                    progress=progress
+                    progress=progress,
+                    use_triage=use_triage,
+                    triage_session=triage_session
                 )
 
                 iterations.append(iteration_result)
@@ -249,7 +257,9 @@ class ReviewLayer:
         tech_stack: Optional[List[str]],
         project_context: str,
         output_dir: Path,
-        progress: Progress
+        progress: Progress,
+        use_triage: bool = False,
+        triage_session: Optional[TriageSession] = None
     ) -> IterationResult:
         """Run a single iteration"""
         start_time = time.time()
@@ -289,6 +299,39 @@ class ReviewLayer:
         )
 
         progress.update(analysis_task, completed=100, description=f"  ✓ {len(suggestions)} issues identified")
+
+        # Step 2.5: Filter through triage if enabled
+        if use_triage and triage_session:
+            # Only use pre-approved suggestions from triage session
+            approved_ids = {
+                f.suggestion.root_cause
+                for f in triage_session.get_approved_findings()
+            }
+            original_count = len(suggestions)
+            suggestions = [
+                s for s in suggestions
+                if s.root_cause in approved_ids
+            ]
+            self.console.print(
+                f"[dim]Filtered to {len(suggestions)}/{original_count} "
+                f"approved suggestions from triage[/dim]"
+            )
+        elif use_triage and not triage_session:
+            # Create new triage session for interactive approval
+            self.console.print("\n[bold]Triage Mode: Review findings before fixing[/bold]\n")
+            triage_session = self.triage_workflow.create_session(
+                project_id=project_id,
+                suggestions=suggestions
+            )
+            triage_session = self.triage_workflow.run_interactive_triage(
+                session=triage_session
+            )
+
+            # Only proceed with approved suggestions
+            suggestions = self.triage_workflow.get_approved_suggestions(triage_session)
+            self.console.print(
+                f"\n[dim]Proceeding with {len(suggestions)} approved fixes[/dim]\n"
+            )
 
         # Step 3: Generate fixes
         fix_task = progress.add_task(f"  Generating fixes...", total=100)
@@ -462,6 +505,29 @@ class ReviewLayer:
             logger.error(f"Failed to read learning database: {e}")
             return {}
 
+    def get_triage_workflow(self) -> TriageWorkflow:
+        """Get the triage workflow instance for external use"""
+        return self.triage_workflow
+
+    def create_triage_session(
+        self,
+        project_id: str,
+        suggestions: List[FixSuggestion]
+    ) -> TriageSession:
+        """
+        Create a triage session for review without running iteration.
+
+        This allows running triage independently of the review loop.
+
+        Args:
+            project_id: Project identifier
+            suggestions: Suggestions to triage
+
+        Returns:
+            TriageSession for interactive review
+        """
+        return self.triage_workflow.create_session(project_id, suggestions)
+
     def close(self):
         """Close resources"""
         if self.analyzer:
@@ -470,3 +536,5 @@ class ReviewLayer:
             self.fix_generator.close()
         if self.test_orchestrator:
             self.test_orchestrator.close()
+        if self.triage_workflow:
+            self.triage_workflow.close()
