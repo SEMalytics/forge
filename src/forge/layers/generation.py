@@ -19,6 +19,7 @@ from rich.table import Table
 from forge.generators.base import CodeGenerator, GenerationContext, GenerationResult, GeneratorError
 from forge.integrations.compound_engineering import Task
 from forge.core.state_manager import StateManager
+from forge.git.worktree import WorktreeManager, WorktreeInfo, WorktreeError
 from forge.utils.logger import logger
 from forge.utils.errors import ForgeError
 
@@ -93,6 +94,7 @@ class TaskExecution:
     started_at: Optional[float] = None
     completed_at: Optional[float] = None
     progress_task_id: Optional[TaskID] = None
+    worktree: Optional[WorktreeInfo] = None
 
     @property
     def duration(self) -> Optional[float]:
@@ -124,7 +126,8 @@ class GenerationOrchestrator:
         generator: CodeGenerator,
         state_manager: Optional[StateManager] = None,
         console: Optional[Console] = None,
-        max_parallel: int = 3
+        max_parallel: int = 3,
+        use_worktrees: bool = False
     ):
         """
         Initialize generation orchestrator.
@@ -134,13 +137,24 @@ class GenerationOrchestrator:
             state_manager: State manager for persistence
             console: Rich console for output
             max_parallel: Maximum parallel tasks (if generator supports it)
+            use_worktrees: Use git worktrees for isolated parallel execution
         """
         self.generator = generator
         self.state_manager = state_manager or StateManager()
         self.console = console or Console()
         self.max_parallel = max_parallel if generator.supports_parallel() else 1
+        self.use_worktrees = use_worktrees
+        self._worktree_manager: Optional[WorktreeManager] = None
 
-        logger.info(f"Initialized GenerationOrchestrator (max_parallel={self.max_parallel})")
+        if use_worktrees:
+            try:
+                self._worktree_manager = WorktreeManager()
+                logger.info("Worktree support enabled")
+            except WorktreeError as e:
+                logger.warning(f"Worktree support disabled: {e}")
+                self.use_worktrees = False
+
+        logger.info(f"Initialized GenerationOrchestrator (max_parallel={self.max_parallel}, worktrees={use_worktrees})")
 
     async def generate_project(
         self,
@@ -623,3 +637,161 @@ class GenerationOrchestrator:
         """Close state manager"""
         if self.state_manager:
             self.state_manager.close()
+
+    # Worktree support methods
+
+    def setup_worktrees(
+        self,
+        task_ids: List[str],
+        base_branch: str = "main"
+    ) -> Dict[str, WorktreeInfo]:
+        """
+        Create worktrees for parallel task execution.
+
+        Args:
+            task_ids: Task identifiers to create worktrees for
+            base_branch: Base branch to create worktrees from
+
+        Returns:
+            Dictionary mapping task IDs to WorktreeInfo
+
+        Raises:
+            GenerationError: If worktree creation fails
+        """
+        if not self._worktree_manager:
+            raise GenerationError("Worktree support not enabled")
+
+        try:
+            return self._worktree_manager.create_worktrees_for_tasks(
+                task_ids=task_ids,
+                base_branch=base_branch
+            )
+        except WorktreeError as e:
+            raise GenerationError(f"Failed to create worktrees: {e}")
+
+    def cleanup_worktrees(
+        self,
+        completed_only: bool = True,
+        delete_branches: bool = False
+    ) -> int:
+        """
+        Clean up worktrees after generation.
+
+        Args:
+            completed_only: Only clean merged worktrees
+            delete_branches: Also delete associated branches
+
+        Returns:
+            Number of worktrees cleaned
+        """
+        if not self._worktree_manager:
+            return 0
+
+        try:
+            return self._worktree_manager.clean_worktrees(
+                completed_only=completed_only,
+                delete_branches=delete_branches
+            )
+        except WorktreeError as e:
+            logger.warning(f"Worktree cleanup failed: {e}")
+            return 0
+
+    async def generate_in_worktrees(
+        self,
+        project_id: str,
+        tasks: List[Task],
+        project_context: str,
+        base_branch: str = "main",
+        merge_on_success: bool = True
+    ) -> Dict[str, GenerationResult]:
+        """
+        Generate code with each task in its own worktree.
+
+        This enables true parallel execution with git isolation.
+        Each task gets its own branch and working directory.
+
+        Args:
+            project_id: Project identifier
+            tasks: Tasks to generate
+            project_context: Project description
+            base_branch: Base branch for worktrees
+            merge_on_success: Merge successful tasks back to base
+
+        Returns:
+            Dictionary mapping task IDs to results
+        """
+        if not self._worktree_manager:
+            raise GenerationError("Worktree support not enabled")
+
+        logger.info(f"Generating {len(tasks)} tasks in isolated worktrees")
+
+        # Create worktrees for all tasks
+        task_ids = [t.id for t in tasks]
+        worktrees = self.setup_worktrees(task_ids, base_branch)
+
+        if not worktrees:
+            raise GenerationError("No worktrees created")
+
+        self.console.print(f"\n[green]✓[/green] Created {len(worktrees)} worktrees\n")
+
+        # Create executions with worktree assignments
+        executions = {}
+        for task in tasks:
+            wt = worktrees.get(task.id)
+            executions[task.id] = TaskExecution(
+                task=task,
+                worktree=wt
+            )
+
+        # Execute tasks with progress tracking
+        results = await self._execute_with_progress(
+            project_id=project_id,
+            executions=executions,
+            project_context=project_context
+        )
+
+        # Handle successful tasks
+        if merge_on_success:
+            merged_count = 0
+            for task_id, result in results.items():
+                if result.success:
+                    execution = executions[task_id]
+                    if execution.worktree:
+                        try:
+                            # Commit changes in worktree
+                            self._worktree_manager.commit_in_worktree(
+                                name=execution.worktree.name,
+                                message=f"feat({task_id}): {execution.task.title}\n\nGenerated by Forge"
+                            )
+
+                            # Merge back to base
+                            success = self._worktree_manager.merge_worktree(
+                                name=execution.worktree.name,
+                                target_branch=base_branch,
+                                delete_after=True
+                            )
+
+                            if success:
+                                merged_count += 1
+                                logger.info(f"Merged task {task_id} to {base_branch}")
+
+                        except WorktreeError as e:
+                            logger.warning(f"Failed to merge task {task_id}: {e}")
+
+            if merged_count > 0:
+                self.console.print(f"\n[green]✓[/green] Merged {merged_count} task(s) to {base_branch}")
+
+        # Display summary
+        self._display_summary(results)
+
+        return results
+
+    def get_worktree_for_task(self, task_id: str) -> Optional[WorktreeInfo]:
+        """Get the worktree assigned to a task."""
+        if self._worktree_manager:
+            return self._worktree_manager.get_worktree_for_task(task_id)
+        return None
+
+    def get_worktree_manager(self) -> Optional[WorktreeManager]:
+        """Get the worktree manager instance."""
+        return self._worktree_manager

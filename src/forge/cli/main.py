@@ -1734,6 +1734,352 @@ def triage(project_id, session, batch, auto, list_sessions):
         sys.exit(1)
 
 
+@cli.group()
+def worktree():
+    """Manage git worktrees for parallel execution
+
+    Worktrees allow running multiple tasks in parallel, each in
+    its own isolated working directory with its own branch.
+
+    Example:
+        forge worktree create task-001 task-002
+        forge worktree list
+        forge worktree clean
+    """
+    pass
+
+
+@worktree.command('create')
+@click.argument('names', nargs=-1, required=True)
+@click.option('--base', '-b', default='main', help="Base branch to create from")
+@click.option('--force', '-f', is_flag=True, help="Force creation (remove existing)")
+def worktree_create(names, base, force):
+    """Create worktrees for parallel tasks
+
+    Creates one or more worktrees, each with its own branch.
+    Worktrees are created in a sibling directory to the repository.
+
+    Example:
+        forge worktree create task-001
+        forge worktree create task-001 task-002 task-003
+        forge worktree create my-feature --base develop
+    """
+    from forge.git.worktree import WorktreeManager, WorktreeError
+    from rich.table import Table
+
+    try:
+        manager = WorktreeManager()
+
+        created = []
+        for name in names:
+            try:
+                wt = manager.create_worktree(
+                    name=name,
+                    base_branch=base,
+                    force=force
+                )
+                created.append(wt)
+                print_success(f"Created worktree: {wt.path}")
+                console.print(f"  Branch: [cyan]{wt.branch}[/cyan]")
+            except WorktreeError as e:
+                print_error(f"Failed to create {name}: {e}")
+
+        if len(created) > 1:
+            console.print(f"\n[green]✓[/green] Created {len(created)} worktrees")
+
+        # Show usage hint
+        if created:
+            console.print(f"\n[dim]Run commands in worktree:[/dim]")
+            console.print(f"  cd {created[0].path}")
+            console.print(f"  # ... make changes ...")
+            console.print(f"  forge worktree merge {created[0].name}\n")
+
+    except WorktreeError as e:
+        print_error(f"Worktree creation failed: {e}")
+        sys.exit(1)
+
+
+@worktree.command('list')
+@click.option('--all', '-a', 'show_all', is_flag=True, help="Show all worktrees (not just forge)")
+@click.option('--json', 'output_json', is_flag=True, help="Output as JSON")
+def worktree_list(show_all, output_json):
+    """List worktrees
+
+    Shows all forge-managed worktrees by default.
+    Use --all to see all worktrees including the main repository.
+
+    Example:
+        forge worktree list
+        forge worktree list --all
+        forge worktree list --json
+    """
+    from forge.git.worktree import WorktreeManager, WorktreeError
+    from rich.table import Table
+    import json as json_module
+
+    try:
+        manager = WorktreeManager()
+        worktrees = manager.list_worktrees()
+
+        if not show_all:
+            worktrees = [wt for wt in worktrees if wt.is_forge_worktree]
+
+        if output_json:
+            data = [wt.to_dict() for wt in worktrees]
+            console.print(json_module.dumps(data, indent=2))
+            return
+
+        if not worktrees:
+            console.print("\n[yellow]No worktrees found.[/yellow]")
+            console.print("Create one with: [cyan]forge worktree create <name>[/cyan]\n")
+            return
+
+        console.print()
+        table = Table(title="Git Worktrees", border_style="blue")
+        table.add_column("Name", style="cyan")
+        table.add_column("Branch", style="green")
+        table.add_column("Path")
+        table.add_column("Status", width=12)
+
+        for wt in worktrees:
+            status = ""
+            if wt.is_locked:
+                status = "[yellow]locked[/yellow]"
+            elif wt.prunable:
+                status = "[dim]prunable[/dim]"
+            elif wt.is_detached:
+                status = "[dim]detached[/dim]"
+            else:
+                status = "[green]active[/green]"
+
+            table.add_row(
+                wt.name,
+                wt.branch or "(detached)",
+                str(wt.path),
+                status
+            )
+
+        console.print(table)
+        console.print()
+
+    except WorktreeError as e:
+        print_error(f"Failed to list worktrees: {e}")
+        sys.exit(1)
+
+
+@worktree.command('remove')
+@click.argument('names', nargs=-1, required=True)
+@click.option('--force', '-f', is_flag=True, help="Force removal even if dirty")
+@click.option('--delete-branch', '-d', is_flag=True, help="Also delete associated branch")
+def worktree_remove(names, force, delete_branch):
+    """Remove worktrees
+
+    Removes one or more worktrees. Use --force to remove even if
+    there are uncommitted changes.
+
+    Example:
+        forge worktree remove task-001
+        forge worktree remove task-001 task-002 --force
+        forge worktree remove task-001 --delete-branch
+    """
+    from forge.git.worktree import WorktreeManager, WorktreeError
+
+    try:
+        manager = WorktreeManager()
+
+        for name in names:
+            try:
+                # Get branch before removing
+                wt = manager.get_worktree(name)
+                branch = wt.branch if wt else None
+
+                manager.remove_worktree(name, force=force)
+                print_success(f"Removed worktree: {name}")
+
+                if delete_branch and branch:
+                    manager._delete_branch(branch, force=True)
+                    console.print(f"  [dim]Deleted branch: {branch}[/dim]")
+
+            except WorktreeError as e:
+                print_error(f"Failed to remove {name}: {e}")
+
+    except WorktreeError as e:
+        print_error(f"Worktree removal failed: {e}")
+        sys.exit(1)
+
+
+@worktree.command('clean')
+@click.option('--all', '-a', 'clean_all', is_flag=True, help="Clean all forge worktrees (not just merged)")
+@click.option('--delete-branches', '-d', is_flag=True, help="Also delete associated branches")
+@click.option('--dry-run', '-n', is_flag=True, help="Show what would be removed")
+def worktree_clean(clean_all, delete_branches, dry_run):
+    """Clean up completed worktrees
+
+    By default, removes only worktrees whose branches have been merged.
+    Use --all to remove all forge worktrees.
+
+    Example:
+        forge worktree clean
+        forge worktree clean --all
+        forge worktree clean --delete-branches
+        forge worktree clean --dry-run
+    """
+    from forge.git.worktree import WorktreeManager, WorktreeError
+
+    try:
+        manager = WorktreeManager()
+
+        if dry_run:
+            worktrees = manager.get_forge_worktrees()
+
+            if not worktrees:
+                console.print("\n[yellow]No forge worktrees to clean.[/yellow]\n")
+                return
+
+            console.print("\n[bold]Would remove:[/bold]")
+            for wt in worktrees:
+                if wt.path == manager.repo_path:
+                    continue
+
+                if clean_all or manager._is_branch_merged(wt.branch):
+                    console.print(f"  • {wt.name} ({wt.branch})")
+
+            console.print("\n[dim]Run without --dry-run to remove[/dim]\n")
+            return
+
+        removed = manager.clean_worktrees(
+            completed_only=not clean_all,
+            delete_branches=delete_branches
+        )
+
+        if removed > 0:
+            print_success(f"Cleaned {removed} worktree(s)")
+        else:
+            console.print("\n[yellow]No worktrees to clean.[/yellow]\n")
+
+    except WorktreeError as e:
+        print_error(f"Worktree cleanup failed: {e}")
+        sys.exit(1)
+
+
+@worktree.command('merge')
+@click.argument('name')
+@click.option('--target', '-t', default='main', help="Target branch to merge into")
+@click.option('--keep', '-k', is_flag=True, help="Keep worktree after merge")
+def worktree_merge(name, target, keep):
+    """Merge worktree branch into target
+
+    Merges the worktree's branch into the target branch (default: main),
+    then removes the worktree and branch.
+
+    Example:
+        forge worktree merge task-001
+        forge worktree merge task-001 --target develop
+        forge worktree merge task-001 --keep
+    """
+    from forge.git.worktree import WorktreeManager, WorktreeError
+
+    try:
+        manager = WorktreeManager()
+
+        wt = manager.get_worktree(name)
+        if not wt:
+            print_error(f"Worktree not found: {name}")
+            sys.exit(1)
+
+        console.print(f"\n[bold]Merging {wt.branch} into {target}...[/bold]\n")
+
+        success = manager.merge_worktree(
+            name=name,
+            target_branch=target,
+            delete_after=not keep
+        )
+
+        if success:
+            print_success(f"Merged {wt.branch} into {target}")
+            if not keep:
+                console.print(f"[dim]Cleaned up worktree and branch[/dim]")
+        else:
+            print_error("Merge failed - resolve conflicts manually")
+            sys.exit(1)
+
+    except WorktreeError as e:
+        print_error(f"Merge failed: {e}")
+        sys.exit(1)
+
+
+@worktree.command('status')
+@click.argument('name', required=False)
+def worktree_status(name):
+    """Show worktree status
+
+    Shows status of a specific worktree or all forge worktrees.
+
+    Example:
+        forge worktree status
+        forge worktree status task-001
+    """
+    from forge.git.worktree import WorktreeManager, WorktreeError
+    from rich.panel import Panel
+
+    try:
+        manager = WorktreeManager()
+
+        if name:
+            wt = manager.get_worktree(name)
+            if not wt:
+                print_error(f"Worktree not found: {name}")
+                sys.exit(1)
+
+            # Show detailed status
+            console.print()
+            console.print(Panel(
+                f"[bold]Path:[/bold] {wt.path}\n"
+                f"[bold]Branch:[/bold] {wt.branch}\n"
+                f"[bold]HEAD:[/bold] {wt.head[:8]}\n"
+                f"[bold]Locked:[/bold] {wt.is_locked}\n"
+                f"[bold]Prunable:[/bold] {wt.prunable}",
+                title=f"[bold cyan]Worktree: {wt.name}[/bold cyan]",
+                border_style="blue"
+            ))
+
+            # Show git status in worktree
+            result = manager.run_in_worktree(name, ["git", "status", "--short"])
+            if result.stdout.strip():
+                console.print("\n[bold]Changes:[/bold]")
+                console.print(result.stdout)
+            else:
+                console.print("\n[green]Working tree clean[/green]")
+
+            console.print()
+
+        else:
+            # Show summary of all forge worktrees
+            worktrees = manager.get_forge_worktrees()
+
+            if not worktrees:
+                console.print("\n[yellow]No forge worktrees found.[/yellow]\n")
+                return
+
+            console.print(f"\n[bold]Forge Worktrees: {len(worktrees)}[/bold]\n")
+
+            for wt in worktrees:
+                if wt.path == manager.repo_path:
+                    continue
+
+                status_icon = "🔒" if wt.is_locked else "📁"
+                merged = manager._is_branch_merged(wt.branch)
+                merge_status = "[green](merged)[/green]" if merged else ""
+
+                console.print(f"  {status_icon} [cyan]{wt.name}[/cyan] → {wt.branch} {merge_status}")
+
+            console.print()
+
+    except WorktreeError as e:
+        print_error(f"Failed to get status: {e}")
+        sys.exit(1)
+
+
 @cli.command()
 @click.option('--project-id', '-p', help="Show stats for specific project")
 def stats(project_id):
