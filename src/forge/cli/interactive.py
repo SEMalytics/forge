@@ -3,6 +3,12 @@ Interactive chat interface with Rich formatting
 
 Provides beautiful terminal-based conversational interface for
 project planning with the Forge Planning Agent.
+
+Uses prompt_toolkit for robust input handling:
+- Full editing support (backspace, delete, arrow keys)
+- Proper paste handling
+- Non-blocking async input
+- Input history with search
 """
 
 from typing import Dict, Any, Optional
@@ -18,6 +24,14 @@ import asyncio
 import sys
 from datetime import datetime
 
+# prompt_toolkit for robust input handling
+from prompt_toolkit import PromptSession
+from prompt_toolkit.patch_stdout import patch_stdout
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+from prompt_toolkit.styles import Style
+from prompt_toolkit.formatted_text import HTML
+
 from forge.layers.planning import PlanningAgent, PlanningError
 from forge.core.state_manager import StateManager
 from forge.utils.logger import logger
@@ -25,53 +39,117 @@ from forge.utils.logger import logger
 
 console = Console()
 
+# prompt_toolkit styling
+PROMPT_STYLE = Style.from_dict({
+    'prompt': 'ansigreen bold',
+    'continuation': 'ansigray',
+})
 
-def _get_multiline_input(prompt: str = "You") -> str:
+
+def _get_prompt_session() -> PromptSession:
     """
-    Get multi-line input from user.
+    Create a prompt session with history and auto-suggest.
 
-    Supports:
-    - Regular Enter to submit
-    - Ctrl+D (Unix) or Ctrl+Z (Windows) on empty line to submit
-    - Type content normally, use empty line + Ctrl+D to finish
+    Returns:
+        Configured PromptSession instance
+    """
+    # Ensure history directory exists
+    history_dir = Path(".forge")
+    history_dir.mkdir(parents=True, exist_ok=True)
+    history_file = history_dir / "chat_history"
+
+    return PromptSession(
+        history=FileHistory(str(history_file)),
+        auto_suggest=AutoSuggestFromHistory(),
+        enable_history_search=True,
+        multiline=True,
+        style=PROMPT_STYLE,
+    )
+
+
+def _continuation_prompt(width: int, line_number: int, wrap_count: int) -> str:
+    """Generate continuation prompt for multiline input."""
+    if wrap_count > 0:
+        return " " * 4  # Indent wrapped lines
+    return "    "  # Simple indent for continuation lines
+
+
+def _get_multiline_input(prompt: str = "You", session: Optional[PromptSession] = None) -> str:
+    """
+    Get multi-line input from user with full editing support.
+
+    Uses prompt_toolkit for:
+    - Full editing (backspace, delete, arrow keys)
+    - Proper paste handling
+    - Input history (Ctrl+R to search)
+    - Auto-suggestions from history
+
+    Submission:
+    - Meta+Enter (Alt+Enter) to submit
+    - Escape followed by Enter to submit
+    - Or just Enter on single-line input
 
     Args:
-        prompt: Prompt to display
+        prompt: Prompt label to display
+        session: Optional existing PromptSession (for history persistence)
 
     Returns:
         User input (potentially multi-line)
     """
-    console.print(f"\n[bold cyan]{prompt}[/bold cyan] (Enter twice or Ctrl+D to submit):")
-
-    lines = []
-    empty_line_count = 0
+    if session is None:
+        session = _get_prompt_session()
 
     try:
-        while True:
-            try:
-                line = input()
+        # Use prompt_toolkit's async-capable prompt
+        # patch_stdout prevents output from corrupting the prompt
+        with patch_stdout():
+            user_input = session.prompt(
+                HTML(f'\n<ansigreen><b>{prompt}</b></ansigreen>: '),
+                multiline=True,
+                prompt_continuation=_continuation_prompt,
+            )
+        return user_input.strip()
 
-                # If user enters empty line twice in a row, submit
-                if not line.strip():
-                    empty_line_count += 1
-                    if empty_line_count >= 2:
-                        # Remove the last empty line we just added
-                        if lines and not lines[-1].strip():
-                            lines.pop()
-                        break
-                    lines.append(line)
-                else:
-                    empty_line_count = 0
-                    lines.append(line)
-
-            except EOFError:
-                # Ctrl+D (Unix) or Ctrl+Z (Windows)
-                break
-
+    except EOFError:
+        # Ctrl+D
+        return ""
     except KeyboardInterrupt:
         raise
 
-    return "\n".join(lines).strip()
+
+async def _get_multiline_input_async(
+    prompt: str = "You",
+    session: Optional[PromptSession] = None
+) -> str:
+    """
+    Get multi-line input asynchronously (non-blocking).
+
+    This allows the event loop to continue while waiting for input,
+    enabling smoother streaming and background operations.
+
+    Args:
+        prompt: Prompt label to display
+        session: Optional existing PromptSession
+
+    Returns:
+        User input (potentially multi-line)
+    """
+    if session is None:
+        session = _get_prompt_session()
+
+    try:
+        with patch_stdout():
+            user_input = await session.prompt_async(
+                HTML(f'\n<ansigreen><b>{prompt}</b></ansigreen>: '),
+                multiline=True,
+                prompt_continuation=_continuation_prompt,
+            )
+        return user_input.strip()
+
+    except EOFError:
+        return ""
+    except KeyboardInterrupt:
+        raise
 
 
 async def chat_session(
@@ -83,6 +161,12 @@ async def chat_session(
 ) -> Dict[str, Any]:
     """
     Run interactive planning chat session.
+
+    Uses prompt_toolkit for professional input handling:
+    - Full editing support (backspace, delete, arrow keys)
+    - Proper paste handling
+    - Input history with Ctrl+R search
+    - Non-blocking async operation
 
     Args:
         api_key: Anthropic API key
@@ -100,6 +184,9 @@ async def chat_session(
     try:
         # Initialize planning agent
         agent = PlanningAgent(api_key)
+
+        # Create persistent prompt session for input history
+        prompt_session = _get_prompt_session()
 
         # Use provided repo_context if available, otherwise analyze cwd
         codebase_context = None
@@ -137,8 +224,8 @@ async def chat_session(
         # Main chat loop
         while True:
             try:
-                # Get user input (supports multi-line)
-                user_input = _get_multiline_input("You")
+                # Get user input with full editing support (async, non-blocking)
+                user_input = await _get_multiline_input_async("You", prompt_session)
 
                 # Handle special commands
                 if user_input.lower() in ['done', 'finish', 'complete']:
@@ -220,8 +307,10 @@ def _print_welcome():
 [dim]I'll help you plan your software project through conversation.[/dim]
 
 [bold]Input:[/bold]
-  • Press Enter for new lines in your message
-  • Press Enter twice (empty line) or Ctrl+D to submit
+  • Type normally with full editing support (arrow keys, backspace)
+  • [cyan]Meta+Enter[/cyan] (Alt+Enter) or [cyan]Esc then Enter[/cyan] to submit
+  • [cyan]Ctrl+R[/cyan] to search input history
+  • Paste works normally
 
 [bold]Commands:[/bold]
   • Type your project ideas or answer my questions
@@ -238,6 +327,22 @@ Let's start planning! What would you like to build?
 
 def _print_help():
     """Print help information."""
+    # Input controls
+    input_table = Table(title="Input Controls", border_style="cyan")
+    input_table.add_column("Key", style="cyan")
+    input_table.add_column("Action")
+
+    input_table.add_row("Meta+Enter / Esc,Enter", "Submit your message")
+    input_table.add_row("Enter", "New line in message")
+    input_table.add_row("Ctrl+R", "Search input history")
+    input_table.add_row("Arrow keys", "Navigate within text")
+    input_table.add_row("Ctrl+C", "Cancel/interrupt")
+    input_table.add_row("Ctrl+D", "Submit (alternative)")
+
+    console.print("\n")
+    console.print(input_table)
+
+    # Commands
     help_table = Table(title="Available Commands", border_style="blue")
     help_table.add_column("Command", style="cyan")
     help_table.add_column("Description")
@@ -248,7 +353,6 @@ def _print_help():
     help_table.add_row("clear", "Clear the screen")
     help_table.add_row("exit/quit", "Cancel and exit session")
 
-    console.print("\n")
     console.print(help_table)
     console.print()
 
