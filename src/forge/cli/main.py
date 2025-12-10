@@ -3353,5 +3353,244 @@ def metrics_record(metric_name: str, value: float, metric_type: str, label: tupl
     print_success(f"Recorded {metric_type} '{metric_name}' = {value}")
 
 
+# ============================================================================
+# Review Commands
+# ============================================================================
+
+
+@cli.group()
+def review():
+    """Multi-agent code review system."""
+    pass
+
+
+@review.command("file")
+@click.argument("file_path", type=click.Path(exists=True))
+@click.option("--threshold", "-t", type=int, default=8, help="Approval threshold (default: 8)")
+@click.option("--parallel/--sequential", default=True, help="Run reviews in parallel")
+@click.option("--format", "output_format", type=click.Choice(["summary", "full", "json"]), default="summary")
+def review_file(file_path: str, threshold: int, parallel: bool, output_format: str):
+    """Review a single source file."""
+    from forge.review import ReviewPanel
+    import json
+
+    path = Path(file_path)
+    if not path.exists():
+        print_error(f"File not found: {file_path}")
+        return
+
+    print_info(f"Reviewing {path.name} with {threshold}/12 approval threshold...")
+
+    try:
+        code = path.read_text()
+        panel = ReviewPanel(approval_threshold=threshold, parallel=parallel)
+        report = panel.review_code(code, file_path=str(path))
+
+        if output_format == "json":
+            console.print_json(json.dumps(report.to_dict(), indent=2))
+        elif output_format == "full":
+            console.print(report.format_summary())
+            _print_all_findings(report)
+        else:
+            _print_review_summary(report)
+
+    except Exception as e:
+        print_error(f"Review failed: {e}")
+
+
+@review.command("directory")
+@click.argument("directory", type=click.Path(exists=True))
+@click.option("--pattern", "-p", default="*.py", help="File pattern to match (default: *.py)")
+@click.option("--threshold", "-t", type=int, default=8, help="Approval threshold")
+@click.option("--format", "output_format", type=click.Choice(["summary", "full", "json"]), default="summary")
+def review_directory(directory: str, pattern: str, threshold: int, output_format: str):
+    """Review all matching files in a directory."""
+    from forge.review import ReviewPanel
+    import json
+
+    dir_path = Path(directory)
+    if not dir_path.is_dir():
+        print_error(f"Not a directory: {directory}")
+        return
+
+    files = list(dir_path.rglob(pattern))
+    if not files:
+        print_warning(f"No files matching '{pattern}' found in {directory}")
+        return
+
+    print_info(f"Reviewing {len(files)} files matching '{pattern}'...")
+
+    try:
+        # Read all files
+        file_contents = {}
+        for f in files:
+            try:
+                file_contents[str(f)] = f.read_text()
+            except Exception as e:
+                print_warning(f"Skipping {f}: {e}")
+
+        panel = ReviewPanel(approval_threshold=threshold)
+        report = panel.review_files(file_contents)
+
+        if output_format == "json":
+            console.print_json(json.dumps(report.to_dict(), indent=2))
+        elif output_format == "full":
+            console.print(report.format_summary())
+            _print_all_findings(report)
+        else:
+            _print_review_summary(report)
+
+    except Exception as e:
+        print_error(f"Review failed: {e}")
+
+
+@review.command("code")
+@click.option("--threshold", "-t", type=int, default=8, help="Approval threshold")
+@click.option("--format", "output_format", type=click.Choice(["summary", "full", "json"]), default="summary")
+def review_code_stdin(threshold: int, output_format: str):
+    """Review code from stdin."""
+    from forge.review import ReviewPanel
+    import json
+
+    print_info("Reading code from stdin (Ctrl+D to end)...")
+    code = sys.stdin.read()
+
+    if not code.strip():
+        print_error("No code provided")
+        return
+
+    try:
+        panel = ReviewPanel(approval_threshold=threshold)
+        report = panel.review_code(code)
+
+        if output_format == "json":
+            console.print_json(json.dumps(report.to_dict(), indent=2))
+        elif output_format == "full":
+            console.print(report.format_summary())
+            _print_all_findings(report)
+        else:
+            _print_review_summary(report)
+
+    except Exception as e:
+        print_error(f"Review failed: {e}")
+
+
+@review.command("panel")
+def review_panel_info():
+    """Show information about the review panel."""
+    from forge.review import ReviewPanel
+    from rich.table import Table
+
+    panel = ReviewPanel()
+
+    table = Table(title="Review Panel - 12 Expert Agents")
+    table.add_column("Agent", style="cyan")
+    table.add_column("Expertise", style="green")
+
+    for reviewer in panel.reviewers:
+        table.add_row(reviewer.name, reviewer.expertise)
+
+    console.print(table)
+    console.print()
+    console.print(f"[bold]Default threshold:[/bold] 8/12 approvals required")
+    console.print("[bold]Blocking issues:[/bold] Critical and High severity findings")
+
+
+def _print_review_summary(report):
+    """Print a concise review summary."""
+    from rich.table import Table
+    from rich.panel import Panel
+
+    decision = report.decision
+
+    # Status banner
+    if decision.approved:
+        console.print(Panel(
+            f"[bold green]✓ APPROVED[/bold green]\n"
+            f"Votes: {decision.approval_count}/{decision.total_reviewers} approve",
+            title="Review Decision",
+            border_style="green"
+        ))
+    else:
+        console.print(Panel(
+            f"[bold red]✗ REJECTED[/bold red]\n"
+            f"Votes: {decision.approval_count}/{decision.total_reviewers} approve "
+            f"(need {decision.threshold})",
+            title="Review Decision",
+            border_style="red"
+        ))
+
+    console.print()
+
+    # Findings summary
+    if report.all_findings:
+        table = Table(title="Findings Summary")
+        table.add_column("Severity", style="cyan")
+        table.add_column("Count", justify="right")
+
+        severity_colors = {
+            "critical": "red bold",
+            "high": "red",
+            "medium": "yellow",
+            "low": "blue",
+            "info": "dim"
+        }
+
+        for severity, findings in report.findings_by_severity.items():
+            color = severity_colors.get(severity, "white")
+            table.add_row(f"[{color}]{severity.upper()}[/{color}]", str(len(findings)))
+
+        console.print(table)
+
+    # Show blocking issues
+    if decision.blocking_findings:
+        console.print()
+        console.print("[bold red]Blocking Issues:[/bold red]")
+        for finding in decision.blocking_findings[:5]:
+            console.print(f"  • [{finding.severity.value}] {finding.message}")
+        if len(decision.blocking_findings) > 5:
+            console.print(f"  ... and {len(decision.blocking_findings) - 5} more")
+
+    console.print()
+    console.print(f"[dim]Review completed in {report.total_review_time_seconds:.2f}s[/dim]")
+
+
+def _print_all_findings(report):
+    """Print all findings grouped by file and category."""
+    from rich.tree import Tree
+
+    if not report.all_findings:
+        console.print("[green]No findings to report[/green]")
+        return
+
+    console.print()
+    console.print("[bold]All Findings:[/bold]")
+
+    tree = Tree("[bold]Findings[/bold]")
+
+    for category, findings in report.findings_by_category.items():
+        category_branch = tree.add(f"[cyan]{category}[/cyan] ({len(findings)})")
+        for finding in findings[:10]:  # Limit per category
+            severity_colors = {
+                "critical": "red bold",
+                "high": "red",
+                "medium": "yellow",
+                "low": "blue",
+                "info": "dim"
+            }
+            color = severity_colors.get(finding.severity.value, "white")
+            msg = f"[{color}][{finding.severity.value}][/{color}] {finding.message}"
+            if finding.file_path:
+                msg += f" [dim]({Path(finding.file_path).name}"
+                if finding.line_number:
+                    msg += f":{finding.line_number}"
+                msg += ")[/dim]"
+            category_branch.add(msg)
+        if len(findings) > 10:
+            category_branch.add(f"[dim]... and {len(findings) - 10} more[/dim]")
+
+    console.print(tree)
+
+
 if __name__ == '__main__':
     main()
