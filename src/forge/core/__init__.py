@@ -2,7 +2,8 @@
 Core components for Forge
 
 Provides configuration, state management, orchestration, context handling,
-streaming output support, caching for incremental builds, and resilience patterns.
+streaming output support, caching for incremental builds, resilience patterns,
+and metrics/telemetry collection.
 """
 
 from forge.core.config import ForgeConfig
@@ -51,6 +52,24 @@ from forge.core.resilience import (
     with_retry,
     with_circuit_breaker,
     with_fallback
+)
+from forge.core.metrics import (
+    MetricsError,
+    MetricType,
+    Metric,
+    HistogramMetric,
+    MetricsCollector,
+    PerformanceTracker,
+    TokenUsage,
+    CostEstimate,
+    CostTracker,
+    MetricsExporter,
+    MetricsAggregator,
+    metrics_collector,
+    cost_tracker,
+    performance_tracker,
+    timed,
+    counted
 )
 
 __all__ = [
@@ -104,4 +123,21 @@ __all__ = [
     'with_retry',
     'with_circuit_breaker',
     'with_fallback',
+    # Metrics
+    'MetricsError',
+    'MetricType',
+    'Metric',
+    'HistogramMetric',
+    'MetricsCollector',
+    'PerformanceTracker',
+    'TokenUsage',
+    'CostEstimate',
+    'CostTracker',
+    'MetricsExporter',
+    'MetricsAggregator',
+    'metrics_collector',
+    'cost_tracker',
+    'performance_tracker',
+    'timed',
+    'counted',
 ]

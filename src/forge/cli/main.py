@@ -3072,5 +3072,286 @@ def resilience_stats():
     console.print(Panel(circuit_stats.strip() + "\n" + checkpoint_stats.strip(), title="Resilience Statistics"))
 
 
+# =============================================================================
+# Metrics Commands
+# =============================================================================
+
+@cli.group()
+def metrics():
+    """Metrics and telemetry management."""
+    pass
+
+
+@metrics.command("show")
+@click.option("--format", "output_format", type=click.Choice(["table", "json", "prometheus"]), default="table")
+def metrics_show(output_format: str):
+    """Show current metrics."""
+    from forge.core.metrics import metrics_collector, MetricsExporter
+    from rich.table import Table
+
+    if output_format == "json":
+        exporter = MetricsExporter(metrics_collector)
+        console.print(exporter.to_json())
+        return
+
+    if output_format == "prometheus":
+        exporter = MetricsExporter(metrics_collector)
+        console.print(exporter.to_prometheus())
+        return
+
+    # Table format
+    all_metrics = metrics_collector.get_all_metrics()
+
+    # Counters table
+    if all_metrics["counters"]:
+        counter_table = Table(title="Counters")
+        counter_table.add_column("Name", style="cyan")
+        counter_table.add_column("Labels")
+        counter_table.add_column("Value", justify="right")
+
+        for name, values in all_metrics["counters"].items():
+            for labels, value in values.items():
+                counter_table.add_row(name, labels or "-", f"{value:,.2f}")
+
+        console.print(counter_table)
+        console.print()
+
+    # Gauges table
+    if all_metrics["gauges"]:
+        gauge_table = Table(title="Gauges")
+        gauge_table.add_column("Name", style="cyan")
+        gauge_table.add_column("Labels")
+        gauge_table.add_column("Value", justify="right")
+
+        for name, values in all_metrics["gauges"].items():
+            for labels, value in values.items():
+                gauge_table.add_row(name, labels or "-", f"{value:,.2f}")
+
+        console.print(gauge_table)
+        console.print()
+
+    # Timers table
+    if all_metrics["timers"]:
+        timer_table = Table(title="Timers")
+        timer_table.add_column("Name", style="cyan")
+        timer_table.add_column("Count", justify="right")
+        timer_table.add_column("Mean", justify="right")
+        timer_table.add_column("P50", justify="right")
+        timer_table.add_column("P90", justify="right")
+        timer_table.add_column("P99", justify="right")
+
+        for name, stats in all_metrics["timers"].items():
+            timer_table.add_row(
+                name,
+                str(stats["count"]),
+                f"{stats['mean']:.3f}s",
+                f"{stats['p50']:.3f}s",
+                f"{stats['p90']:.3f}s",
+                f"{stats['p99']:.3f}s"
+            )
+
+        console.print(timer_table)
+
+    if not any([all_metrics["counters"], all_metrics["gauges"], all_metrics["timers"]]):
+        console.print("[yellow]No metrics recorded yet[/yellow]")
+
+
+@metrics.command("cost")
+@click.option("--hours", default=24, help="Hours of history to show")
+def metrics_cost(hours: int):
+    """Show API cost breakdown."""
+    from forge.core.metrics import cost_tracker
+    from rich.table import Table
+    from rich.panel import Panel
+
+    # Get totals
+    total_usage = cost_tracker.get_total_usage()
+    total_cost = cost_tracker.get_total_cost()
+
+    summary = f"""
+[bold]Total API Usage:[/bold]
+  Input Tokens: {total_usage.input_tokens:,}
+  Output Tokens: {total_usage.output_tokens:,}
+  Cached Tokens: {total_usage.cached_tokens:,}
+  Total Tokens: {total_usage.total_tokens:,}
+
+[bold]Estimated Cost:[/bold] ${total_cost:.4f}
+"""
+    console.print(Panel(summary.strip(), title="API Cost Summary"))
+
+    # By model breakdown
+    by_model = cost_tracker.get_usage_by_model()
+    if by_model:
+        table = Table(title="Usage by Model")
+        table.add_column("Model", style="cyan")
+        table.add_column("Calls", justify="right")
+        table.add_column("Input", justify="right")
+        table.add_column("Output", justify="right")
+        table.add_column("Cost", justify="right")
+
+        for model, stats in by_model.items():
+            table.add_row(
+                model,
+                str(stats["calls"]),
+                f"{stats['input_tokens']:,}",
+                f"{stats['output_tokens']:,}",
+                f"${stats['total_cost']:.4f}"
+            )
+
+        console.print(table)
+    else:
+        console.print("[yellow]No API usage recorded[/yellow]")
+
+
+@metrics.command("performance")
+def metrics_performance():
+    """Show performance metrics."""
+    from forge.core.metrics import performance_tracker, metrics_collector
+    from rich.table import Table
+
+    # Active operations
+    active = performance_tracker.get_active_operations()
+    if active:
+        table = Table(title="Active Operations")
+        table.add_column("Operation", style="cyan")
+        table.add_column("Started At")
+        table.add_column("Duration")
+        table.add_column("Labels")
+
+        for op in active:
+            duration = (datetime.now() - op.started_at).total_seconds()
+            table.add_row(
+                op.operation,
+                op.started_at.strftime("%H:%M:%S"),
+                f"{duration:.1f}s",
+                str(op.labels) if op.labels else "-"
+            )
+
+        console.print(table)
+        console.print()
+
+    # Operation statistics
+    all_metrics = metrics_collector.get_all_metrics()
+    op_timers = {k: v for k, v in all_metrics["timers"].items() if "operation_duration" in k}
+
+    if op_timers:
+        table = Table(title="Operation Performance")
+        table.add_column("Operation", style="cyan")
+        table.add_column("Count", justify="right")
+        table.add_column("Total Time", justify="right")
+        table.add_column("Avg Time", justify="right")
+        table.add_column("P99", justify="right")
+
+        for name, stats in op_timers.items():
+            op_name = name.replace("operation_duration_", "").split(":")[0]
+            table.add_row(
+                op_name,
+                str(stats["count"]),
+                f"{stats['sum']:.1f}s",
+                f"{stats['mean']:.2f}s",
+                f"{stats['p99']:.2f}s"
+            )
+
+        console.print(table)
+    else:
+        console.print("[yellow]No performance data recorded[/yellow]")
+
+
+@metrics.command("export")
+@click.argument("output_path", type=click.Path())
+@click.option("--format", "output_format", type=click.Choice(["json", "prometheus"]), default="json")
+def metrics_export(output_path: str, output_format: str):
+    """Export metrics to file."""
+    from forge.core.metrics import metrics_collector, MetricsExporter
+
+    exporter = MetricsExporter(metrics_collector)
+    output = Path(output_path)
+
+    exporter.save_to_file(output, output_format)
+    print_success(f"Metrics exported to {output}")
+
+
+@metrics.command("snapshot")
+def metrics_snapshot():
+    """Save metrics snapshot for historical analysis."""
+    from forge.core.metrics import metrics_collector, MetricsAggregator
+
+    aggregator = MetricsAggregator(metrics_collector)
+    path = aggregator.save_snapshot()
+    print_success(f"Snapshot saved to {path}")
+
+
+@metrics.command("history")
+@click.option("--limit", default=10, help="Number of snapshots to show")
+def metrics_history(limit: int):
+    """Show historical metrics snapshots."""
+    from forge.core.metrics import metrics_collector, MetricsAggregator
+    from rich.table import Table
+
+    aggregator = MetricsAggregator(metrics_collector)
+    snapshots = aggregator.load_snapshots(limit)
+
+    if not snapshots:
+        console.print("[yellow]No snapshots found[/yellow]")
+        return
+
+    table = Table(title="Metrics Snapshots")
+    table.add_column("File", style="cyan")
+    table.add_column("Time")
+    table.add_column("Uptime")
+    table.add_column("Counters")
+    table.add_column("Gauges")
+
+    for snap in snapshots:
+        table.add_row(
+            snap.get("_file", "-"),
+            snap.get("snapshot_time", "-")[:19],
+            f"{snap.get('uptime_seconds', 0):.0f}s",
+            str(len(snap.get("counters", {}))),
+            str(len(snap.get("gauges", {})))
+        )
+
+    console.print(table)
+
+
+@metrics.command("reset")
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation")
+def metrics_reset(yes: bool):
+    """Reset all metrics."""
+    from forge.core.metrics import metrics_collector, cost_tracker
+
+    if not yes:
+        if not click.confirm("Reset all metrics? This cannot be undone."):
+            console.print("[yellow]Cancelled[/yellow]")
+            return
+
+    metrics_collector.reset()
+    cost_tracker.reset()
+    print_success("All metrics reset")
+
+
+@metrics.command("record")
+@click.argument("metric_name")
+@click.argument("value", type=float)
+@click.option("--type", "metric_type", type=click.Choice(["counter", "gauge"]), default="counter")
+@click.option("--label", "-l", multiple=True, help="Label in key=value format")
+def metrics_record(metric_name: str, value: float, metric_type: str, label: tuple):
+    """Manually record a metric value."""
+    from forge.core.metrics import metrics_collector
+
+    labels = {}
+    for l in label:
+        if "=" in l:
+            k, v = l.split("=", 1)
+            labels[k] = v
+
+    if metric_type == "counter":
+        metrics_collector.increment(metric_name, value, labels or None)
+    else:
+        metrics_collector.set_gauge(metric_name, value, labels or None)
+
+    print_success(f"Recorded {metric_type} '{metric_name}' = {value}")
+
+
 if __name__ == '__main__':
     main()
