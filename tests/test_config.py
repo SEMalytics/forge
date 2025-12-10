@@ -13,7 +13,7 @@ def test_default_config():
     config = ForgeConfig()
 
     assert config.generator.backend == "codegen_api"
-    assert config.generator.timeout == 300
+    assert config.generator.timeout == 7200  # 2 hours for CodeGen agent runs
     assert config.git.author_name == "Forge AI"
     assert config.git.commit_format == "conventional"
     assert config.pattern_store_path == ".forge/patterns.db"

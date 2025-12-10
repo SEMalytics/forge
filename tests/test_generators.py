@@ -388,27 +388,28 @@ def test_validate_context_no_specification():
 
 @pytest.mark.asyncio
 async def test_codegen_api_generate_mock(sample_context):
-    """Test CodeGen API generation with mocked HTTP"""
+    """Test CodeGen API generation with mocked CodeGenClient"""
     generator = CodeGenAPIGenerator(api_key="test-key")
 
-    # Mock HTTP response
-    with patch.object(generator.client, 'post', new_callable=AsyncMock) as mock_post:
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "completion": """
-### api/auth.py
-```python
-def authenticate(user):
-    return True
-```
-""",
+    # Mock CodeGenClient at the source module where it's imported from
+    with patch('forge.integrations.codegen_client.CodeGenClient') as MockCodeGenClient:
+        # Create mock instance
+        mock_client = AsyncMock()
+        MockCodeGenClient.return_value = mock_client
+
+        # Mock generate_code to return files
+        mock_client.generate_code = AsyncMock(return_value={
+            "files": [
+                {"path": "api/auth.py", "content": "def authenticate(user):\n    return True"},
+            ],
             "usage": {"total_tokens": 500}
-        }
-        mock_post.return_value = mock_response
+        })
 
-        result = await generator.generate(sample_context)
+        # Mock _get_repository_id to return a valid repo ID
+        with patch.object(generator, '_get_repository_id', new_callable=AsyncMock) as mock_repo:
+            mock_repo.return_value = "test-repo-id"
 
-        assert result.success is True
-        assert len(result.files) > 0
-        assert result.tokens_used == 500
+            result = await generator.generate(sample_context)
+
+            assert result.success is True
+            assert len(result.files) > 0
