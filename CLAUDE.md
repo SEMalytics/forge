@@ -45,13 +45,69 @@ forge-build/
 
 ---
 
+## **CLI Reference**
+
+### **Core Workflow**
+
+```shell
+forge doctor                    # Check system dependencies
+forge init <name>               # Initialize new project
+forge chat                      # Interactive planning session
+forge chat --repo /path         # Plan with existing codebase analysis
+forge decompose "description"   # Generate task plan
+forge build -p <id>             # Build project from plan
+forge test -p <id>              # Run comprehensive tests
+forge iterate -p <id>           # Auto-fix until tests pass
+forge review file <path>        # Multi-agent code review (needs 8/12 approval)
+forge deploy -p <id> --platform flyio|vercel|aws|docker|k8s
+forge pr -p <id>                # Create pull request
+```
+
+### **Project Management**
+
+```shell
+forge status [project-id]       # Show project status or list all
+forge stats -p <id>             # Project statistics
+forge analyze [repo-path]       # Analyze codebase structure
+forge search "query"            # Search KnowledgeForge patterns
+```
+
+### **Advanced Commands**
+
+```shell
+# Build options
+forge build -p <id> --backend codegen_api|claude_code
+forge build -p <id> --parallel --max-parallel 5
+forge build -p <id> --force     # Re-run all tasks
+forge build -p <id> --no-resume # Start fresh
+
+# Worktrees for parallel execution
+forge worktree create task-001 task-002
+forge worktree list|status|merge|clean
+
+# Cache management
+forge cache stats|list|clear|warm
+
+# Context management (cascading generation info)
+forge context show|add|clear|stats
+
+# Metrics and resilience
+forge metrics show|cost|performance|export
+forge resilience stats|checkpoints|circuits|restore
+
+# Utilities
+forge triage -p <id>            # Interactive test failure triage
+forge examples                  # List example projects
+forge explain <concept>         # Explain Forge concepts
+```
+
+---
+
 ## **Python Stack Standards**
 
 ### **Version Requirements**
 
-* **Python:** 3.11+ (primary target)  
-* **Compatibility:** 3.8+ supported for broader adoption  
-* **Why 3.11+:** Modern type hints, better performance, improved error messages
+* **Python:** 3.11+ (primary), 3.8+ compatible
 
 ### **Core Dependencies**
 
@@ -138,36 +194,7 @@ logger = get_logger(__name__)
 
 ### **Type Hints \- REQUIRED**
 
-**All public functions must have complete type annotations:**
-
-```py
-# ✅ CORRECT - Full type hints
-def generate_tasks(
-    description: str,
-    tech_stack: List[str],
-    max_tasks: int = 20
-) -> List[Task]:
-    """
-    Generate task breakdown from project description.
-    
-    Args:
-        description: Natural language project description
-        tech_stack: List of technologies (e.g., ['python', 'fastapi'])
-        max_tasks: Maximum number of tasks to generate (default: 20)
-    
-    Returns:
-        List of Task objects with dependencies
-    
-    Raises:
-        ValueError: If description is empty
-        TaskGenerationError: If generation fails
-    """
-    pass
-
-# ❌ WRONG - Missing type hints
-def generate_tasks(description, tech_stack, max_tasks=20):
-    pass
-```
+All public functions must have complete type annotations with Google-style docstrings.
 
 ### **Docstring Standards \- Google Style**
 
