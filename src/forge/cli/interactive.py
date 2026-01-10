@@ -29,12 +29,27 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.keys import Keys
+from prompt_toolkit.input import vt100_parser
 
 from forge.layers.planning import PlanningAgent, PlanningError
 from forge.utils.logger import logger
 
 
 console = Console()
+
+# Register Shift+Enter escape sequences for modern terminals
+# These sequences are sent by terminals with extended keyboard support:
+# - kitty keyboard protocol: \x1b[13;2u
+# - xterm modifyOtherKeys: \x1b[27;2;13~
+SHIFT_ENTER_KEY = '<shift-enter>'
+SHIFT_ENTER_SEQUENCES = [
+    '\x1b[13;2u',      # kitty protocol / xterm modifyOtherKeys mode 2
+    '\x1b[27;2;13~',   # xterm modifyOtherKeys mode 1
+]
+
+# Add Shift+Enter sequences to prompt_toolkit's ANSI parser
+for seq in SHIFT_ENTER_SEQUENCES:
+    vt100_parser.ANSI_SEQUENCES[seq] = SHIFT_ENTER_KEY
 
 # prompt_toolkit styling
 PROMPT_STYLE = Style.from_dict({
@@ -48,7 +63,8 @@ def _create_key_bindings() -> KeyBindings:
     Create custom key bindings for chat input.
 
     - Enter: Submit message
-    - Escape+Enter: Insert newline (Shift+Enter not reliably detected in terminals)
+    - Shift+Enter: Insert newline (on supported terminals)
+    - Escape+Enter: Insert newline (fallback for all terminals)
 
     Returns:
         Configured KeyBindings instance
@@ -60,9 +76,14 @@ def _create_key_bindings() -> KeyBindings:
         """Submit on Enter."""
         event.current_buffer.validate_and_handle()
 
+    @bindings.add(SHIFT_ENTER_KEY)
+    def _(event):
+        """Insert newline on Shift+Enter (modern terminals)."""
+        event.current_buffer.insert_text('\n')
+
     @bindings.add(Keys.Escape, Keys.Enter)
     def _(event):
-        """Insert newline on Escape+Enter."""
+        """Insert newline on Escape+Enter (fallback)."""
         event.current_buffer.insert_text('\n')
 
     return bindings
@@ -332,7 +353,7 @@ def _print_welcome():
 
 [bold]Input:[/bold]
   • Type normally with full editing support (arrow keys, backspace)
-  • [cyan]Enter[/cyan] to submit • [cyan]Esc, Enter[/cyan] for new line
+  • [cyan]Enter[/cyan] to submit • [cyan]Shift+Enter[/cyan] or [cyan]Esc,Enter[/cyan] for new line
   • [cyan]Ctrl+R[/cyan] to search input history
 
 [bold]Commands:[/bold]
@@ -356,7 +377,8 @@ def _print_help():
     input_table.add_column("Action")
 
     input_table.add_row("Enter", "Submit your message")
-    input_table.add_row("Esc, Enter", "New line in message")
+    input_table.add_row("Shift+Enter", "New line (modern terminals)")
+    input_table.add_row("Esc, Enter", "New line (all terminals)")
     input_table.add_row("Ctrl+R", "Search input history")
     input_table.add_row("Arrow keys", "Navigate within text")
     input_table.add_row("Ctrl+C", "Cancel/interrupt")
