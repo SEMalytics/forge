@@ -500,15 +500,17 @@ def analyze(repo_path, force, output_json, verbose):
 
 @cli.command()
 @click.option('--project-id', '-p', help="Resume existing project session")
-@click.option('--repo', '-r', type=click.Path(exists=True), help="Analyze repository before planning")
-def chat(project_id, repo):
+@click.option('--repo', '-r', type=click.Path(exists=True), help="Analyze specific repository (default: current dir if git repo)")
+@click.option('--no-repo', is_flag=True, help="Skip auto-detection of current repository")
+def chat(project_id, repo, no_repo):
     """Start interactive planning session
 
-    For new projects:
-        forge chat
+    If run inside a git repository, automatically analyzes the codebase.
 
-    For existing codebases (analyzes repo first):
-        forge chat --repo /path/to/project
+    Examples:
+        forge chat                    # Auto-analyzes current repo if in one
+        forge chat --repo /other/path # Analyze a specific repo
+        forge chat --no-repo          # Skip repo analysis
 
     To resume a previous session:
         forge chat --project-id <id>
@@ -526,7 +528,14 @@ def chat(project_id, repo):
         console.print("\nOr add to your shell profile (~/.zshrc or ~/.bashrc)")
         sys.exit(1)
 
-    # Analyze repository if specified
+    # Auto-detect git repo if --repo not specified and --no-repo not set
+    if not repo and not no_repo:
+        cwd = Path.cwd()
+        # Check if we're in a git repo
+        if (cwd / '.git').exists() or any(p.name == '.git' for p in cwd.parents if (p / '.git').exists()):
+            repo = str(cwd)
+
+    # Analyze repository if specified or auto-detected
     repo_context = None
     if repo:
         from forge.layers.repository_analyzer import RepositoryAnalyzer
