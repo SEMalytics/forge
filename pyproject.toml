@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "forge"
-version = "1.0.0"
+version = "1.5.0"
 description = "AI Development Orchestration System"
 authors = ["Forge Team"]
 readme = "README.md"

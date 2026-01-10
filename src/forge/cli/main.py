@@ -83,7 +83,7 @@ logger = _LazyLogger()
 
 
 @click.group()
-@click.version_option(version="1.0.0")
+@click.version_option(version="1.5.0")
 @click.pass_context
 def cli(ctx):
     """⚒ Forge - AI Development Orchestration System"""

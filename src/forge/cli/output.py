@@ -31,10 +31,10 @@ FORGE_BANNER_LARGE = """[bold blue]
     ██║     ╚██████╔╝██║  ██║╚██████╔╝███████╗
     ╚═╝      ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚══════╝
 [/bold blue]
-[dim]AI Development Orchestration • v1.0.0[/dim]
+[dim]AI Development Orchestration • v1.5.0[/dim]
 """
 
-FORGE_BANNER_MINIMAL = "[bold blue]⚒ FORGE[/bold blue] [dim]• AI Development Orchestration • v1.0.0[/dim]"
+FORGE_BANNER_MINIMAL = "[bold blue]⚒ FORGE[/bold blue] [dim]• AI Development Orchestration • v1.5.0[/dim]"
 
 
 # ============================================================================
