@@ -91,11 +91,14 @@ def cli(ctx):
     ctx.ensure_object(dict)
     # Orchestrator will be loaded lazily by commands that need it
 
+    # Show ASCII banner for all commands (but not for --help or when no command given)
+    if not ctx.resilient_parsing and ctx.invoked_subcommand is not None:
+        print_banner(large=True)
+
 
 @cli.command()
 def doctor():
     """Check system dependencies and configuration"""
-    print_banner()
     console.print("\n🔍 Checking Forge installation...\n")
 
     # Check Python version
