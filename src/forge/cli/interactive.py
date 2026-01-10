@@ -48,7 +48,7 @@ def _create_key_bindings() -> KeyBindings:
     Create custom key bindings for chat input.
 
     - Enter: Submit message
-    - Shift+Enter: Insert newline
+    - Escape+Enter: Insert newline (Shift+Enter not reliably detected in terminals)
 
     Returns:
         Configured KeyBindings instance
@@ -60,9 +60,9 @@ def _create_key_bindings() -> KeyBindings:
         """Submit on Enter."""
         event.current_buffer.validate_and_handle()
 
-    @bindings.add(Keys.ShiftEnter)
+    @bindings.add(Keys.Escape, Keys.Enter)
     def _(event):
-        """Insert newline on Shift+Enter."""
+        """Insert newline on Escape+Enter."""
         event.current_buffer.insert_text('\n')
 
     return bindings
@@ -109,7 +109,7 @@ def _get_multiline_input(prompt: str = "You", session: Optional[PromptSession] =
 
     Submission:
     - Enter to submit
-    - Shift+Enter for new line
+    - Escape then Enter for new line
 
     Args:
         prompt: Prompt label to display
@@ -332,7 +332,7 @@ def _print_welcome():
 
 [bold]Input:[/bold]
   • Type normally with full editing support (arrow keys, backspace)
-  • [cyan]Enter[/cyan] to submit • [cyan]Shift+Enter[/cyan] for new line
+  • [cyan]Enter[/cyan] to submit • [cyan]Esc, Enter[/cyan] for new line
   • [cyan]Ctrl+R[/cyan] to search input history
 
 [bold]Commands:[/bold]
@@ -356,7 +356,7 @@ def _print_help():
     input_table.add_column("Action")
 
     input_table.add_row("Enter", "Submit your message")
-    input_table.add_row("Shift+Enter", "New line in message")
+    input_table.add_row("Esc, Enter", "New line in message")
     input_table.add_row("Ctrl+R", "Search input history")
     input_table.add_row("Arrow keys", "Navigate within text")
     input_table.add_row("Ctrl+C", "Cancel/interrupt")
