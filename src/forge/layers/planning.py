@@ -33,13 +33,21 @@ class PlanningAgent:
     extracting requirements, constraints, and technical specifications.
     """
 
-    def __init__(self, api_key: str, model: str = "claude-opus-4-5-20251101"):
+    def __init__(
+        self,
+        api_key: str,
+        model: str = "claude-opus-4-5-20251101",
+        extended_thinking: bool = True,
+        thinking_budget: int = 10000
+    ):
         """
         Initialize planning agent.
 
         Args:
             api_key: Anthropic API key
             model: Claude model to use
+            extended_thinking: Enable extended thinking for deeper reasoning
+            thinking_budget: Token budget for thinking (default 10000)
 
         Raises:
             PlanningError: If initialization fails
@@ -50,6 +58,8 @@ class PlanningAgent:
         try:
             self.client = Anthropic(api_key=api_key)
             self.model = model
+            self.extended_thinking = extended_thinking
+            self.thinking_budget = thinking_budget
             self.conversation_history: List[Dict[str, str]] = []
             self.session_metadata: Dict[str, Any] = {
                 "started_at": datetime.now().isoformat(),
@@ -58,7 +68,8 @@ class PlanningAgent:
             self.codebase_context: Optional[str] = None  # Formatted context string
             self.repository_context: Optional[RepositoryContext] = None  # Full analysis
             self._analyzer = RepositoryAnalyzer()
-            logger.info(f"Initialized PlanningAgent with model: {model}")
+            thinking_status = "enabled" if extended_thinking else "disabled"
+            logger.info(f"Initialized PlanningAgent with model: {model}, thinking: {thinking_status}")
         except Exception as e:
             raise PlanningError(f"Failed to initialize planning agent: {e}")
 
@@ -92,14 +103,26 @@ class PlanningAgent:
         try:
             response_text = ""
 
+            # Build API parameters
+            api_params = {
+                "model": self.model,
+                "max_tokens": 16000,
+                "system": system_prompt,
+                "messages": self.conversation_history
+            }
+
+            # Add extended thinking if enabled
+            if self.extended_thinking:
+                api_params["temperature"] = 1  # Required for extended thinking
+                api_params["thinking"] = {
+                    "type": "enabled",
+                    "budget_tokens": self.thinking_budget
+                }
+            else:
+                api_params["temperature"] = 0.7
+
             # Stream response from Claude
-            with self.client.messages.stream(
-                model=self.model,
-                max_tokens=2000,
-                temperature=0.7,
-                system=system_prompt,
-                messages=self.conversation_history
-            ) as stream:
+            with self.client.messages.stream(**api_params) as stream:
                 for text in stream.text_stream:
                     response_text += text
                     yield text

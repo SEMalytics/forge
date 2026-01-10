@@ -27,6 +27,8 @@ from prompt_toolkit.history import FileHistory
 from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.keys import Keys
 
 from forge.layers.planning import PlanningAgent, PlanningError
 from forge.utils.logger import logger
@@ -39,6 +41,31 @@ PROMPT_STYLE = Style.from_dict({
     'prompt': 'ansigreen bold',
     'continuation': 'ansigray',
 })
+
+
+def _create_key_bindings() -> KeyBindings:
+    """
+    Create custom key bindings for chat input.
+
+    - Enter: Submit message
+    - Shift+Enter: Insert newline
+
+    Returns:
+        Configured KeyBindings instance
+    """
+    bindings = KeyBindings()
+
+    @bindings.add(Keys.Enter)
+    def _(event):
+        """Submit on Enter."""
+        event.current_buffer.validate_and_handle()
+
+    @bindings.add(Keys.ShiftEnter)
+    def _(event):
+        """Insert newline on Shift+Enter."""
+        event.current_buffer.insert_text('\n')
+
+    return bindings
 
 
 def _get_prompt_session() -> PromptSession:
@@ -59,6 +86,7 @@ def _get_prompt_session() -> PromptSession:
         enable_history_search=True,
         multiline=True,
         style=PROMPT_STYLE,
+        key_bindings=_create_key_bindings(),
     )
 
 
@@ -80,9 +108,8 @@ def _get_multiline_input(prompt: str = "You", session: Optional[PromptSession] =
     - Auto-suggestions from history
 
     Submission:
-    - Meta+Enter (Alt+Enter) to submit
-    - Escape followed by Enter to submit
-    - Or just Enter on single-line input
+    - Enter to submit
+    - Shift+Enter for new line
 
     Args:
         prompt: Prompt label to display
@@ -305,9 +332,8 @@ def _print_welcome():
 
 [bold]Input:[/bold]
   • Type normally with full editing support (arrow keys, backspace)
-  • [cyan]Meta+Enter[/cyan] (Alt+Enter) or [cyan]Esc then Enter[/cyan] to submit
+  • [cyan]Enter[/cyan] to submit • [cyan]Shift+Enter[/cyan] for new line
   • [cyan]Ctrl+R[/cyan] to search input history
-  • Paste works normally
 
 [bold]Commands:[/bold]
   • Type your project ideas or answer my questions
@@ -329,8 +355,8 @@ def _print_help():
     input_table.add_column("Key", style="cyan")
     input_table.add_column("Action")
 
-    input_table.add_row("Meta+Enter / Esc,Enter", "Submit your message")
-    input_table.add_row("Enter", "New line in message")
+    input_table.add_row("Enter", "Submit your message")
+    input_table.add_row("Shift+Enter", "New line in message")
     input_table.add_row("Ctrl+R", "Search input history")
     input_table.add_row("Arrow keys", "Navigate within text")
     input_table.add_row("Ctrl+C", "Cancel/interrupt")
