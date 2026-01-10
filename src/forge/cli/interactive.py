@@ -152,7 +152,8 @@ async def chat_session(
     project_id: Optional[str] = None,
     save_session: bool = True,
     analyze_cwd: bool = True,
-    repo_context=None
+    repo_context=None,
+    model: str = None
 ) -> Dict[str, Any]:
     """
     Run interactive planning chat session.
@@ -169,6 +170,7 @@ async def chat_session(
         save_session: Whether to save conversation history
         analyze_cwd: Whether to analyze current directory codebase
         repo_context: Optional RepositoryContext from pre-analyzed repository
+        model: Model name to use (defaults to Opus 4.5)
 
     Returns:
         Project summary dictionary
@@ -177,8 +179,8 @@ async def chat_session(
         PlanningError: If session fails
     """
     try:
-        # Initialize planning agent
-        agent = PlanningAgent(api_key)
+        # Initialize planning agent with specified model
+        agent = PlanningAgent(api_key, model=model) if model else PlanningAgent(api_key)
 
         # Create persistent prompt session for input history
         prompt_session = _get_prompt_session()
@@ -619,15 +621,16 @@ Location: {cwd}
     return analysis
 
 
-def simple_chat(api_key: str, repo_context=None):
+def simple_chat(api_key: str, repo_context=None, model: str = None):
     """
     Simple synchronous chat wrapper for CLI.
 
     Args:
         api_key: Anthropic API key
         repo_context: Optional RepositoryContext from repository analysis
+        model: Model name to use (defaults to Opus 4.5)
 
     Returns:
         Project summary or None
     """
-    return asyncio.run(chat_session(api_key, repo_context=repo_context))
+    return asyncio.run(chat_session(api_key, repo_context=repo_context, model=model))

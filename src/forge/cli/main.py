@@ -502,15 +502,17 @@ def analyze(repo_path, force, output_json, verbose):
 @click.option('--project-id', '-p', help="Resume existing project session")
 @click.option('--repo', '-r', type=click.Path(exists=True), help="Analyze specific repository (default: current dir if git repo)")
 @click.option('--no-repo', is_flag=True, help="Skip auto-detection of current repository")
-def chat(project_id, repo, no_repo):
+@click.option('--model', '-m', type=click.Choice(['opus', 'sonnet']), default='opus',
+              help="Model to use: opus (default, most capable) or sonnet (faster, cheaper)")
+def chat(project_id, repo, no_repo, model):
     """Start interactive planning session
 
     If run inside a git repository, automatically analyzes the codebase.
 
     Examples:
-        forge chat                    # Auto-analyzes current repo if in one
+        forge chat                    # Auto-analyzes current repo (uses Opus 4.5)
+        forge chat -m sonnet          # Use Sonnet for faster/cheaper planning
         forge chat --repo /other/path # Analyze a specific repo
-        forge chat --no-repo          # Skip repo analysis
 
     To resume a previous session:
         forge chat --project-id <id>
@@ -531,8 +533,7 @@ def chat(project_id, repo, no_repo):
     # Auto-detect git repo if --repo not specified and --no-repo not set
     if not repo and not no_repo:
         cwd = Path.cwd()
-        # Check if we're in a git repo
-        if (cwd / '.git').exists() or any(p.name == '.git' for p in cwd.parents if (p / '.git').exists()):
+        if (cwd / '.git').exists():
             repo = str(cwd)
 
     # Analyze repository if specified or auto-detected
@@ -562,9 +563,16 @@ def chat(project_id, repo, no_repo):
             print_warning(f"Repository analysis failed: {e}")
             console.print("[dim]Continuing without repository context...[/dim]\n")
 
+    # Map model choice to full model name
+    model_map = {
+        'opus': 'claude-opus-4-5-20251101',
+        'sonnet': 'claude-sonnet-4-20250514'
+    }
+    model_name = model_map.get(model, model_map['opus'])
+
     try:
         # Start interactive chat session with optional repo context
-        summary = simple_chat(api_key, repo_context=repo_context)
+        summary = simple_chat(api_key, repo_context=repo_context, model=model_name)
 
         if summary:
             console.print("\n[green]✓[/green] Planning session completed successfully!")
