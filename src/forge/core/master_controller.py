@@ -780,61 +780,69 @@ class MasterController:
         start: Stage,
         end: Stage,
     ) -> None:
-        """Print pipeline header."""
-        self.console.print()
-        self.console.print(Panel(
-            f"Project: [bold]{project_id}[/bold]\n"
-            f"Policy: [cyan]{policy.value}[/cyan]\n"
-            f"Stages: {start.value} -> {end.value}",
-            title="[bold blue]Forge Pipeline[/bold blue]",
-            border_style="blue",
-        ))
+        """Print pipeline header with ASCII banner."""
+        from forge.cli.output import (
+            print_pipeline_banner,
+            print_pipeline_header,
+        )
+
+        # Print large ASCII banner
+        print_pipeline_banner()
+
+        # Print pipeline info box
+        stages = self._stages_between(start, end)
+        stage_names = [s.value for s in stages]
+        print_pipeline_header(project_id, policy.value, stage_names)
 
     def _print_stage_start(self, stage: Stage, retry: bool = False, override: bool = False) -> None:
         """Print stage start message."""
+        from forge.cli.output import print_stage_start
+
         suffix = ""
         if retry:
             suffix = " [yellow](retry)[/yellow]"
         elif override:
             suffix = " [cyan](with override)[/cyan]"
-        self.console.print(f"\n[bold]>> {stage.value.upper()}[/bold]{suffix}")
+
+        print_stage_start(stage.value)
+        if suffix:
+            self.console.print(f"  {suffix}")
 
     def _print_stage_result(self, result: StageResult) -> None:
         """Print stage result."""
+        from forge.cli.output import print_stage_success, print_stage_failed
+
         if result.success:
-            self.console.print(f"  [green]Completed in {result.duration_seconds:.1f}s[/green]")
+            print_stage_success(result.stage.value, "Completed", result.duration_seconds)
         else:
-            self.console.print(f"  [red]Failed after {result.duration_seconds:.1f}s[/red]")
-            self.console.print(f"  [red]Error: {result.error}[/red]")
+            print_stage_failed(result.stage.value, str(result.error) if result.error else "Failed")
+            self.console.print(f"  [dim]Duration: {result.duration_seconds:.1f}s[/dim]")
 
     def _print_skip(self, stage: Stage) -> None:
         """Print stage skip message."""
-        self.console.print(f"\n[dim]-- {stage.value.upper()} (skipped)[/dim]")
+        from forge.cli.output import ForgeStyles
+        icon = ForgeStyles.ICONS["skipped"]
+        self.console.print(f"\n[{ForgeStyles.SKIPPED}]{icon} {stage.value.upper()} (skipped)[/{ForgeStyles.SKIPPED}]")
 
     def _print_summary(self, pipeline: PipelineRun) -> None:
-        """Print pipeline summary."""
-        self.console.print()
+        """Print pipeline summary using enhanced output."""
+        from forge.cli.output import print_pipeline_summary
 
-        if pipeline.succeeded:
-            status = "[bold green]Pipeline completed successfully[/bold green]"
-        elif pipeline.aborted:
-            status = f"[bold yellow]Pipeline aborted at {pipeline.current_stage.value}[/bold yellow]"
-        else:
-            status = f"[bold red]Pipeline failed at {pipeline.current_stage.value}[/bold red]"
+        # Convert results to dict format for output function
+        results = [
+            {
+                "stage": r.stage.value,
+                "success": r.success,
+                "duration_seconds": r.duration_seconds,
+            }
+            for r in pipeline.results
+        ]
 
-        summary_lines = [status, ""]
-        for r in pipeline.results:
-            icon = "[green]OK[/green]" if r.success else "[red]FAIL[/red]"
-            summary_lines.append(f"  {r.stage.value}: {icon} ({r.duration_seconds:.1f}s)")
-
-        summary_lines.append("")
-        summary_lines.append(f"Total time: {pipeline.total_duration:.1f}s")
-
-        self.console.print(Panel(
-            "\n".join(summary_lines),
-            title="[bold]Pipeline Summary[/bold]",
-            border_style="blue",
-        ))
+        print_pipeline_summary(
+            results=results,
+            total_duration=pipeline.total_duration,
+            succeeded=pipeline.succeeded,
+        )
 
     def close(self):
         """Cleanup resources."""

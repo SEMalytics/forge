@@ -1,20 +1,17 @@
 """
 Forge CLI using Click
+
+Lazy loading is used for heavy imports (Orchestrator, PatternStore) to ensure
+fast startup for simple commands like --help and --version.
 """
 
 import click
 from pathlib import Path
 import sys
-from dotenv import load_dotenv
+from typing import TYPE_CHECKING
 
-# Load environment variables from .env file
-env_file = Path(__file__).parent.parent.parent.parent / '.env'
-if env_file.exists():
-    load_dotenv(env_file)
-
-from forge.core.config import ForgeConfig  # noqa: E402
-from forge.core.orchestrator import Orchestrator  # noqa: E402
-from forge.cli.output import (  # noqa: E402
+# Light imports only at module level
+from forge.cli.output import (
     print_banner,
     print_success,
     print_error,
@@ -25,10 +22,64 @@ from forge.cli.output import (  # noqa: E402
     print_system_status,
     console
 )
-from forge.utils.logger import setup_logger  # noqa: E402
 
-# Setup logger
-logger = setup_logger()
+# Type hints for lazy-loaded modules
+if TYPE_CHECKING:
+    from forge.core.config import ForgeConfig
+    from forge.core.orchestrator import Orchestrator
+
+
+def _load_env():
+    """Load environment variables from .env file (lazy)."""
+    from dotenv import load_dotenv
+    env_file = Path(__file__).parent.parent.parent.parent / '.env'
+    if env_file.exists():
+        load_dotenv(env_file)
+
+
+def _get_config() -> "ForgeConfig":
+    """Lazy load ForgeConfig."""
+    _load_env()
+    from forge.core.config import ForgeConfig
+    return ForgeConfig.load()
+
+
+def _get_orchestrator(ctx) -> "Orchestrator":
+    """
+    Lazy-load orchestrator only when needed.
+
+    Caches the orchestrator in ctx.obj so it's only created once per invocation.
+    """
+    if ctx.obj is None:
+        ctx.ensure_object(dict)
+
+    if ctx.obj.get('_orchestrator') is None:
+        from forge.core.orchestrator import Orchestrator
+        config = _get_config()
+        ctx.obj['_orchestrator'] = Orchestrator(config)
+        ctx.obj['_config'] = config
+
+    return ctx.obj['_orchestrator']
+
+
+def _get_logger():
+    """Lazy load logger."""
+    from forge.utils.logger import setup_logger
+    return setup_logger()
+
+
+# Module-level logger (lazy-initialized on first access)
+class _LazyLogger:
+    """Lazy logger proxy that only initializes when first accessed."""
+    _instance = None
+
+    def __getattr__(self, name):
+        if _LazyLogger._instance is None:
+            _LazyLogger._instance = _get_logger()
+        return getattr(_LazyLogger._instance, name)
+
+
+logger = _LazyLogger()
 
 
 @click.group()
@@ -36,15 +87,9 @@ logger = setup_logger()
 @click.pass_context
 def cli(ctx):
     """⚒ Forge - AI Development Orchestration System"""
-    # Store orchestrator in context
-    try:
-        ctx.ensure_object(dict)
-        config = ForgeConfig.load()
-        ctx.obj['orchestrator'] = Orchestrator(config)
-        ctx.obj['config'] = config
-    except Exception as e:
-        print_error(f"Failed to initialize Forge: {e}")
-        sys.exit(1)
+    # Just ensure context exists - don't load anything heavy
+    ctx.ensure_object(dict)
+    # Orchestrator will be loaded lazily by commands that need it
 
 
 @cli.command()
@@ -172,7 +217,7 @@ def doctor():
 @click.pass_context
 def init(ctx, project_name, description):
     """Initialize a new Forge project"""
-    orchestrator = ctx.obj['orchestrator']
+    orchestrator = _get_orchestrator(ctx)
 
     try:
         project = orchestrator.create_project(
@@ -196,7 +241,7 @@ def init(ctx, project_name, description):
 @click.pass_context
 def status(ctx, project_id):
     """Show project status or list all projects"""
-    orchestrator = ctx.obj['orchestrator']
+    orchestrator = _get_orchestrator(ctx)
 
     try:
         # If no project_id provided, list all projects
@@ -262,7 +307,7 @@ def status(ctx, project_id):
 @click.pass_context
 def search(ctx, query, max_results, method):
     """Search KnowledgeForge patterns"""
-    orchestrator = ctx.obj['orchestrator']
+    orchestrator = _get_orchestrator(ctx)
 
     try:
         results = orchestrator.search_patterns(query, max_results, method)
@@ -280,7 +325,7 @@ def search(ctx, query, max_results, method):
 @click.pass_context
 def info(ctx):
     """Show system information and statistics"""
-    orchestrator = ctx.obj['orchestrator']
+    orchestrator = _get_orchestrator(ctx)
 
     try:
         status = orchestrator.get_system_status()
