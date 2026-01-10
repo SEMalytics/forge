@@ -10,14 +10,13 @@ Analyzes test failures to:
 """
 
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
 
 from forge.knowledgeforge.pattern_store import PatternStore
-from forge.testing.docker_runner import TestResult
-from forge.testing.security_scanner import ScanResult, Vulnerability
+from forge.testing.docker_runner import ExecutionResult
+from forge.testing.security_scanner import ScanResult
 from forge.testing.performance import BenchmarkResult
 from forge.utils.logger import logger
 from forge.utils.errors import ForgeError
@@ -245,7 +244,7 @@ class FailureAnalyzer:
 
     def analyze_failures(
         self,
-        test_results: Optional[TestResult] = None,
+        test_results: Optional[ExecutionResult] = None,
         security_results: Optional[ScanResult] = None,
         performance_results: Optional[List[BenchmarkResult]] = None,
         code_files: Optional[Dict[str, str]] = None
@@ -300,7 +299,7 @@ class FailureAnalyzer:
 
     def _analyze_test_failures(
         self,
-        test_results: TestResult,
+        test_results: ExecutionResult,
         code_files: Dict[str, str]
     ) -> List[FixSuggestion]:
         """Analyze test failures"""

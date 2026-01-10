@@ -18,7 +18,7 @@ from forge.layers.fix_generator import (
     FixGenerator,
     GeneratedFix
 )
-from forge.testing.docker_runner import TestResult, TestFramework
+from forge.testing.docker_runner import ExecutionResult, SupportedFramework
 from forge.testing.security_scanner import ScanResult, Vulnerability, Severity, VulnerabilityType
 
 
@@ -430,7 +430,7 @@ def test_end_to_end_failure_analysis():
     analyzer = FailureAnalyzer()
 
     # Create test result with failures
-    test_result = TestResult(framework=TestFramework.PYTEST)
+    test_result = ExecutionResult(framework=SupportedFramework.PYTEST)
     test_result.passed = 0
     test_result.failed = 2
     test_result.output = """

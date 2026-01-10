@@ -10,7 +10,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from forge.review.agents import (
     APIDesignReviewer,
@@ -28,7 +28,7 @@ from forge.review.agents import (
     ReviewResult,
     ReviewSeverity,
     SecurityReviewer,
-    TestingReviewer,
+    QualityReviewer,
 )
 
 
@@ -211,7 +211,7 @@ class ReviewPanel:
         SecurityReviewer,
         PerformanceReviewer,
         ArchitectureReviewer,
-        TestingReviewer,
+        QualityReviewer,
         DocumentationReviewer,
         ErrorHandlingReviewer,
         CodeStyleReviewer,

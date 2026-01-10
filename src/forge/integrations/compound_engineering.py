@@ -4,8 +4,6 @@ Compound Engineering integration for task planning
 Provides intelligent task decomposition using CE patterns or fallback to basic planning.
 """
 
-import subprocess
-import json
 import re
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
@@ -458,7 +456,7 @@ class CompoundEngineeringClient:
 
         # Topological sort using Kahn's algorithm
         in_degree = {task.id: 0 for task in tasks}
-        task_map = {task.id: task for task in tasks}
+        _task_map = {task.id: task for task in tasks}  # noqa: F841
 
         # Calculate in-degrees
         for task in tasks:

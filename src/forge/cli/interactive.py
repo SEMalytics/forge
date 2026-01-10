@@ -13,15 +13,11 @@ Uses prompt_toolkit for robust input handling:
 
 from typing import Dict, Any, Optional
 from rich.console import Console
-from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
-from rich.live import Live
-from rich.spinner import Spinner
 from rich.table import Table
 from pathlib import Path
 import asyncio
-import sys
 from datetime import datetime
 
 # prompt_toolkit for robust input handling
@@ -33,7 +29,6 @@ from prompt_toolkit.styles import Style
 from prompt_toolkit.formatted_text import HTML
 
 from forge.layers.planning import PlanningAgent, PlanningError
-from forge.core.state_manager import StateManager
 from forge.utils.logger import logger
 
 
@@ -558,7 +553,7 @@ def _analyze_codebase() -> Optional[Dict[str, Any]]:
             try:
                 readme = readme_path.read_text()[:1000]  # First 1000 chars
                 break
-            except:
+            except Exception:
                 pass
 
     # Find main entry points

@@ -1,4 +1,4 @@
-# **CLAUDE.md \- Forge Project**
+# **CLAUDE.md - Forge Project**
 
 **Forge** is an AI development orchestration system that transforms natural language descriptions into production-ready code through intelligent planning, parallel generation, automated testing, and multi-agent review.
 
@@ -10,14 +10,20 @@
 
 Forge is a CLI tool that orchestrates the entire software development process:
 
-1. **Conversational Planning** \- Natural language requirements gathering  
-2. **Task Decomposition** \- Breaks projects into optimal, parallelizable tasks  
-3. **Code Generation** \- Generates code using CodeGen API or Claude Code  
-4. **Automated Testing** \- Creates and runs comprehensive test suites  
-5. **Expert Review** \- 12-agent review system (needs 8/12 approval)  
-6. **Iterative Refinement** \- Auto-fixes until all tests pass  
-7. **Git Integration** \- Conventional commits and PR creation  
-8. **Deployment** \- Multi-platform deployment configs
+1. **Conversational Planning** - Natural language requirements gathering  
+2. **Task Decomposition** - Breaks projects into optimal, parallelizable tasks  
+3. **Code Generation** - Generates code using CodeGen API or Claude Code  
+4. **Automated Testing** - Creates and runs comprehensive test suites  
+5. **Expert Review** - 12-agent review system (needs 8/12 approval)  
+6. **Iterative Refinement** - Auto-fixes until all tests pass  
+7. **Git Integration** - Conventional commits and PR creation  
+8. **Deployment** - Multi-platform deployment configs
+
+### **AI Model**
+
+- **Primary:** Claude Sonnet 4.5 (Anthropic) - 72.7% SWE-bench, optimal for agentic workflows
+- **Fallback:** OpenAI GPT-4 (configurable)
+- **Local support:** Planned (OLMo integration)
 
 ### **Architecture**
 
@@ -119,7 +125,7 @@ python = "^3.11"
 click = "^8.1.0"              # CLI framework
 rich = "^13.0.0"              # Terminal formatting
 pydantic = "^2.0.0"           # Data validation
-anthropic = "^0.18.0"         # Claude API
+anthropic = "^0.18.0"         # Claude Sonnet 4.5 API client
 httpx = "^0.25.0"             # Async HTTP
 gitpython = "^3.1.0"          # Git operations
 sentence-transformers = "^2.2.0"  # Pattern embeddings
@@ -192,11 +198,11 @@ from forge.utils.logger import get_logger
 logger = get_logger(__name__)
 ```
 
-### **Type Hints \- REQUIRED**
+### **Type Hints - REQUIRED**
 
 All public functions must have complete type annotations with Google-style docstrings.
 
-### **Docstring Standards \- Google Style**
+### **Docstring Standards - Google Style**
 
 ```py
 def orchestrate_build(
@@ -257,10 +263,10 @@ def orchestrate_build(
 
 **Maximum Complexity:**
 
-* Functions: **\< 50 lines** (extract helpers if longer)  
-* Classes: **\< 300 lines** (split if larger)  
-* Nesting depth: **\< 4 levels** (extract functions)  
-* Function parameters: **\< 7** (use dataclasses)
+* Functions: **< 50 lines** (extract helpers if longer)  
+* Classes: **< 300 lines** (split if larger)  
+* Nesting depth: **< 4 levels** (extract functions)  
+* Function parameters: **< 7** (use dataclasses)
 
 ---
 
@@ -270,24 +276,24 @@ def orchestrate_build(
 
 **SOLID Principles:**
 
-1. **Single Responsibility** \- Each layer has one purpose  
-2. **Open/Closed** \- Plugin architecture for generators  
-3. **Liskov Substitution** \- Generator backends are substitutable  
-4. **Interface Segregation** \- Clean abstractions (CodeGenerator ABC)  
-5. **Dependency Injection** \- Config/dependencies passed explicitly
+1. **Single Responsibility** - Each layer has one purpose  
+2. **Open/Closed** - Plugin architecture for generators  
+3. **Liskov Substitution** - Generator backends are substitutable  
+4. **Interface Segregation** - Clean abstractions (CodeGenerator ABC)  
+5. **Dependency Injection** - Config/dependencies passed explicitly
 
 **Core Patterns:**
 
-* ✅ **DRY** \- Pattern store prevents duplication  
-* ✅ **KISS** \- Simple, composable layers  
-* ✅ **YAGNI** \- Build what's needed, when needed  
-* ✅ **Separation of Concerns** \- 6 distinct layers  
-* ✅ **Composition over Inheritance** \- Prefer composition  
-* ✅ **Fail Fast** \- Validate early, fail clearly
+* ✅ **DRY** - Pattern store prevents duplication  
+* ✅ **KISS** - Simple, composable layers  
+* ✅ **YAGNI** - Build what's needed, when needed  
+* ✅ **Separation of Concerns** - 6 distinct layers  
+* ✅ **Composition over Inheritance** - Prefer composition  
+* ✅ **Fail Fast** - Validate early, fail clearly
 
 ### **Forge-Specific Patterns**
 
-**1\. Layered Architecture**
+**1. Layered Architecture**
 
 ```py
 # Each layer is independent and testable
@@ -316,7 +322,7 @@ class ForgeOrchestrator:
         self.generation = generation
 ```
 
-**2\. Plugin Architecture**
+**2. Plugin Architecture**
 
 ```py
 # Abstract base class defines interface
@@ -343,7 +349,7 @@ class GeneratorFactory:
         pass
 ```
 
-**3\. State Management with Checkpoints**
+**3. State Management with Checkpoints**
 
 ```py
 # All state is recoverable
@@ -357,7 +363,7 @@ class StateManager:
         pass
 ```
 
-**4\. Pattern-Driven Development**
+**4. Pattern-Driven Development**
 
 ```py
 # Reference KnowledgeForge patterns
@@ -546,11 +552,12 @@ class ForgeConfig:
 
 ### **Example Configuration**
 
-```
+```yaml
 # ~/.forge/config.yaml (global)
 generator:
   backend: codegen_api
-  api_key: ${CODEGEN_API_KEY}  # From env var
+  model: claude-sonnet-4.5-20250514  # Specify exact model version
+  api_key: ${ANTHROPIC_API_KEY}      # From env var
   timeout: 300
 
 git:
@@ -566,7 +573,7 @@ pattern_store:
   embedding_model: all-MiniLM-L6-v2
 ```
 
-```
+```yaml
 # ./forge.yaml (project-specific)
 project:
   name: restaurant-forecasting
@@ -821,7 +828,7 @@ Closes #42
 
 ### **Pre-commit Configuration**
 
-```
+```yaml
 # .pre-commit-config.yaml
 repos:
   - repo: https://github.com/psf/black
@@ -851,7 +858,7 @@ repos:
 
 ### **pyproject.toml**
 
-```
+```toml
 [tool.black]
 line-length = 100
 target-version = ['py311']
@@ -961,35 +968,46 @@ pre-commit run --all-files
 
 ### **Forge Documentation**
 
-* **README.md** \- Quick start and overview  
-* **ARCHITECTURE.md** \- System design  
-* **API\_REFERENCE.md** \- Complete API docs  
-* **CONTRIBUTING.md** \- Development guide
+* **README.md** - Quick start and overview  
+* **ARCHITECTURE.md** - System design  
+* **API_REFERENCE.md** - Complete API docs  
+* **CONTRIBUTING.md** - Development guide
 
 ### **KnowledgeForge 4.0** (Agent Specifications)
 
 Located in: `knowledgeforge/`
 
-* `00_Project_Instructions.md` \- Core behavioral framework
-* `01_Navigator_Agent.md` \- Intent routing
-* `02_Builder_Agent.md` \- PDIA agent creation method
-* `03_Coordination_Patterns.md` \- Multi-agent orchestration
-* `04_Specification_Templates.md` \- Reusable specification formats
-* `05_Expert_Agent_Example.md` \- Domain specialist pattern
-* `06_Quick_Reference.md` \- Quick lookup guide
+* `00_Project_Instructions.md` - Core behavioral framework
+* `01_Navigator_Agent.md` - Intent routing
+* `02_Builder_Agent.md` - PDIA agent creation method
+* `03_Coordination_Patterns.md` - Multi-agent orchestration
+* `04_Specification_Templates.md` - Reusable specification formats
+* `05_Expert_Agent_Example.md` - Domain specialist pattern
+* `06_Quick_Reference.md` - Quick lookup guide
 
 ### **Operational Patterns**
 
 Located in: `patterns/`
 
-* `core/architecture.md` \- Five-layer system architecture
-* `core/data-transfer.md` \- Compression, chunking, streaming
-* `agents/catalog.md` \- Agent registry and coordination
-* `workflows/orchestration.md` \- Master orchestrator pattern
-* `testing/scenarios.md` \- Comprehensive test scenarios
-* `operations/security.md` \- Authentication, authorization
+* `core/architecture.md` - Five-layer system architecture
+* `core/data-transfer.md` - Compression, chunking, streaming
+* `agents/catalog.md` - Agent registry and coordination
+* `workflows/orchestration.md` - Master orchestrator pattern
+* `testing/scenarios.md` - Comprehensive test scenarios
+* `operations/security.md` - Authentication, authorization
 
 ---
 
-**Remember:** Write code that your future self will thank you for. Clarity \> cleverness.
+**Remember:** Write code that your future self will thank you for. Clarity > cleverness.
+---
 
+## **Changelog**
+
+### **2026-01-10 - Model Specification Update**
+
+**Added:**
+- AI Model section specifying Claude Sonnet 4.5 as primary model (72.7% SWE-bench)
+- Explicit model version in configuration examples (`claude-sonnet-4.5-20250514`)
+- Updated anthropic dependency description to specify Claude Sonnet 4.5 API client
+
+**Rationale:** Clarifies exact model version used for agentic workflows and ensures future readers understand the capabilities baseline. Model version matters for reproducing results and understanding performance characteristics.

@@ -11,9 +11,8 @@ Runs tests in isolated Docker containers for:
 import asyncio
 import json
 import tempfile
-import shutil
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
 import subprocess
@@ -27,7 +26,7 @@ class DockerTestError(ForgeError):
     pass
 
 
-class TestFramework(Enum):
+class SupportedFramework(Enum):
     """Supported test frameworks"""
     PYTEST = "pytest"
     JEST = "jest"
@@ -39,9 +38,9 @@ class TestFramework(Enum):
 
 
 @dataclass
-class TestResult:
+class ExecutionResult:
     """Test execution result"""
-    framework: TestFramework
+    framework: SupportedFramework
     passed: int = 0
     failed: int = 0
     skipped: int = 0
@@ -88,24 +87,24 @@ class DockerTestRunner:
 
     # Default Docker images by framework
     DEFAULT_IMAGES = {
-        TestFramework.PYTEST: "python:3.11-slim",
-        TestFramework.UNITTEST: "python:3.11-slim",
-        TestFramework.JEST: "node:18-alpine",
-        TestFramework.MOCHA: "node:18-alpine",
-        TestFramework.RSPEC: "ruby:3.2-slim",
-        TestFramework.GO_TEST: "golang:1.21-alpine",
-        TestFramework.CARGO_TEST: "rust:1.75-slim",
+        SupportedFramework.PYTEST: "python:3.11-slim",
+        SupportedFramework.UNITTEST: "python:3.11-slim",
+        SupportedFramework.JEST: "node:18-alpine",
+        SupportedFramework.MOCHA: "node:18-alpine",
+        SupportedFramework.RSPEC: "ruby:3.2-slim",
+        SupportedFramework.GO_TEST: "golang:1.21-alpine",
+        SupportedFramework.CARGO_TEST: "rust:1.75-slim",
     }
 
     # Test commands by framework
     TEST_COMMANDS = {
-        TestFramework.PYTEST: "pytest --cov --cov-report=json -v",
-        TestFramework.UNITTEST: "python -m unittest discover -v",
-        TestFramework.JEST: "npm test -- --coverage --json",
-        TestFramework.MOCHA: "npm test",
-        TestFramework.RSPEC: "bundle exec rspec --format json",
-        TestFramework.GO_TEST: "go test -v -coverprofile=coverage.out ./...",
-        TestFramework.CARGO_TEST: "cargo test --verbose",
+        SupportedFramework.PYTEST: "pytest --cov --cov-report=json -v",
+        SupportedFramework.UNITTEST: "python -m unittest discover -v",
+        SupportedFramework.JEST: "npm test -- --coverage --json",
+        SupportedFramework.MOCHA: "npm test",
+        SupportedFramework.RSPEC: "bundle exec rspec --format json",
+        SupportedFramework.GO_TEST: "go test -v -coverprofile=coverage.out ./...",
+        SupportedFramework.CARGO_TEST: "cargo test --verbose",
     }
 
     def __init__(
@@ -142,9 +141,9 @@ class DockerTestRunner:
         self,
         test_files: Dict[str, str],
         source_files: Dict[str, str],
-        framework: Optional[TestFramework] = None,
+        framework: Optional[SupportedFramework] = None,
         docker_config: Optional[DockerConfig] = None
-    ) -> TestResult:
+    ) -> ExecutionResult:
         """
         Run tests in Docker container.
 
@@ -195,7 +194,7 @@ class DockerTestRunner:
 
             return result
 
-    def _detect_framework(self, test_files: Dict[str, str]) -> TestFramework:
+    def _detect_framework(self, test_files: Dict[str, str]) -> SupportedFramework:
         """Detect test framework from file extensions and content"""
         # Check file extensions
         for file_path in test_files.keys():
@@ -205,28 +204,28 @@ class DockerTestRunner:
                 # Check for pytest or unittest
                 content = test_files[file_path]
                 if 'import pytest' in content or 'def test_' in content:
-                    return TestFramework.PYTEST
+                    return SupportedFramework.PYTEST
                 elif 'import unittest' in content:
-                    return TestFramework.UNITTEST
+                    return SupportedFramework.UNITTEST
 
             elif path.suffix in ('.js', '.ts', '.jsx', '.tsx'):
                 content = test_files[file_path]
                 if 'jest' in content or "describe(" in content:
-                    return TestFramework.JEST
+                    return SupportedFramework.JEST
                 elif 'mocha' in content:
-                    return TestFramework.MOCHA
+                    return SupportedFramework.MOCHA
 
             elif path.suffix == '.rb':
-                return TestFramework.RSPEC
+                return SupportedFramework.RSPEC
 
             elif path.suffix == '.go' and '_test' in path.stem:
-                return TestFramework.GO_TEST
+                return SupportedFramework.GO_TEST
 
             elif path.suffix == '.rs':
-                return TestFramework.CARGO_TEST
+                return SupportedFramework.CARGO_TEST
 
         # Default to pytest
-        return TestFramework.PYTEST
+        return SupportedFramework.PYTEST
 
     def _write_files(
         self, workspace: Path, files: Dict[str, str], subdir: str
@@ -245,9 +244,9 @@ class DockerTestRunner:
 
         logger.debug(f"Wrote {len(files)} files to {subdir}/")
 
-    def _setup_framework(self, workspace: Path, framework: TestFramework):
+    def _setup_framework(self, workspace: Path, framework: SupportedFramework):
         """Create framework-specific configuration files"""
-        if framework == TestFramework.PYTEST:
+        if framework == SupportedFramework.PYTEST:
             # Create pytest.ini
             (workspace / "pytest.ini").write_text("""[pytest]
 testpaths = tests
@@ -263,22 +262,22 @@ pytest-cov>=4.0.0
 pytest-asyncio>=0.21.0
 """)
 
-        elif framework in (TestFramework.JEST, TestFramework.MOCHA):
+        elif framework in (SupportedFramework.JEST, SupportedFramework.MOCHA):
             # Create package.json
             (workspace / "package.json").write_text(json.dumps({
                 "name": "test-project",
                 "version": "1.0.0",
                 "scripts": {
-                    "test": "jest" if framework == TestFramework.JEST else "mocha"
+                    "test": "jest" if framework == SupportedFramework.JEST else "mocha"
                 },
                 "devDependencies": {
-                    "jest": "^29.0.0" if framework == TestFramework.JEST else None,
-                    "mocha": "^10.0.0" if framework == TestFramework.MOCHA else None,
-                    "@types/jest": "^29.0.0" if framework == TestFramework.JEST else None
+                    "jest": "^29.0.0" if framework == SupportedFramework.JEST else None,
+                    "mocha": "^10.0.0" if framework == SupportedFramework.MOCHA else None,
+                    "@types/jest": "^29.0.0" if framework == SupportedFramework.JEST else None
                 }
             }, indent=2))
 
-            if framework == TestFramework.JEST:
+            if framework == SupportedFramework.JEST:
                 # Create jest.config.js
                 (workspace / "jest.config.js").write_text("""module.exports = {
   testMatch: ['**/tests/**/*.test.js'],
@@ -287,7 +286,7 @@ pytest-asyncio>=0.21.0
 };
 """)
 
-        elif framework == TestFramework.RSPEC:
+        elif framework == SupportedFramework.RSPEC:
             # Create Gemfile
             (workspace / "Gemfile").write_text("""source 'https://rubygems.org'
 
@@ -301,14 +300,14 @@ gem 'simplecov', '~> 0.22'
 --require spec_helper
 """)
 
-        elif framework == TestFramework.GO_TEST:
+        elif framework == SupportedFramework.GO_TEST:
             # Create go.mod
             (workspace / "go.mod").write_text("""module testproject
 
 go 1.21
 """)
 
-        elif framework == TestFramework.CARGO_TEST:
+        elif framework == SupportedFramework.CARGO_TEST:
             # Create Cargo.toml
             (workspace / "Cargo.toml").write_text("""[package]
 name = "testproject"
@@ -321,9 +320,9 @@ edition = "2021"
     async def _run_in_docker(
         self,
         workspace: Path,
-        framework: TestFramework,
+        framework: SupportedFramework,
         config: DockerConfig
-    ) -> TestResult:
+    ) -> ExecutionResult:
         """Run tests in Docker container"""
         import time
 
@@ -371,7 +370,7 @@ edition = "2021"
     def _build_docker_command(
         self,
         workspace: Path,
-        framework: TestFramework,
+        framework: SupportedFramework,
         config: DockerConfig
     ) -> List[str]:
         """Build Docker run command"""
@@ -398,30 +397,30 @@ edition = "2021"
 
         return cmd
 
-    def _get_test_command(self, framework: TestFramework) -> str:
+    def _get_test_command(self, framework: SupportedFramework) -> str:
         """Get test command with setup"""
         base_cmd = self.TEST_COMMANDS[framework]
 
-        if framework == TestFramework.PYTEST:
+        if framework == SupportedFramework.PYTEST:
             return f"pip install -q -r requirements.txt && {base_cmd}"
 
-        elif framework in (TestFramework.JEST, TestFramework.MOCHA):
+        elif framework in (SupportedFramework.JEST, SupportedFramework.MOCHA):
             return f"npm install --silent && {base_cmd}"
 
-        elif framework == TestFramework.RSPEC:
+        elif framework == SupportedFramework.RSPEC:
             return f"bundle install --quiet && {base_cmd}"
 
-        elif framework == TestFramework.GO_TEST:
+        elif framework == SupportedFramework.GO_TEST:
             return f"go mod download && {base_cmd}"
 
-        elif framework == TestFramework.CARGO_TEST:
+        elif framework == SupportedFramework.CARGO_TEST:
             return base_cmd
 
         return base_cmd
 
     async def _run_locally(
-        self, workspace: Path, framework: TestFramework
-    ) -> TestResult:
+        self, workspace: Path, framework: SupportedFramework
+    ) -> ExecutionResult:
         """Run tests locally without Docker"""
         import time
 
@@ -456,31 +455,31 @@ edition = "2021"
 
     def _parse_test_output(
         self,
-        framework: TestFramework,
+        framework: SupportedFramework,
         stdout: str,
         stderr: str,
         duration: float
-    ) -> TestResult:
+    ) -> ExecutionResult:
         """Parse test output to extract results"""
-        result = TestResult(
+        result = ExecutionResult(
             framework=framework,
             duration_seconds=duration,
             output=stdout
         )
 
-        if framework == TestFramework.PYTEST:
+        if framework == SupportedFramework.PYTEST:
             result = self._parse_pytest_output(stdout, stderr, duration)
 
-        elif framework == TestFramework.JEST:
+        elif framework == SupportedFramework.JEST:
             result = self._parse_jest_output(stdout, stderr, duration)
 
-        elif framework == TestFramework.RSPEC:
+        elif framework == SupportedFramework.RSPEC:
             result = self._parse_rspec_output(stdout, stderr, duration)
 
-        elif framework == TestFramework.GO_TEST:
+        elif framework == SupportedFramework.GO_TEST:
             result = self._parse_go_output(stdout, stderr, duration)
 
-        elif framework == TestFramework.CARGO_TEST:
+        elif framework == SupportedFramework.CARGO_TEST:
             result = self._parse_cargo_output(stdout, stderr, duration)
 
         # Add errors if any
@@ -491,10 +490,10 @@ edition = "2021"
 
     def _parse_pytest_output(
         self, stdout: str, stderr: str, duration: float
-    ) -> TestResult:
+    ) -> ExecutionResult:
         """Parse pytest output"""
-        result = TestResult(
-            framework=TestFramework.PYTEST,
+        result = ExecutionResult(
+            framework=SupportedFramework.PYTEST,
             duration_seconds=duration,
             output=stdout
         )
@@ -525,10 +524,10 @@ edition = "2021"
 
     def _parse_jest_output(
         self, stdout: str, stderr: str, duration: float
-    ) -> TestResult:
+    ) -> ExecutionResult:
         """Parse Jest output"""
-        result = TestResult(
-            framework=TestFramework.JEST,
+        result = ExecutionResult(
+            framework=SupportedFramework.JEST,
             duration_seconds=duration,
             output=stdout
         )
@@ -551,10 +550,10 @@ edition = "2021"
 
     def _parse_rspec_output(
         self, stdout: str, stderr: str, duration: float
-    ) -> TestResult:
+    ) -> ExecutionResult:
         """Parse RSpec output"""
-        result = TestResult(
-            framework=TestFramework.RSPEC,
+        result = ExecutionResult(
+            framework=SupportedFramework.RSPEC,
             duration_seconds=duration,
             output=stdout
         )
@@ -573,10 +572,10 @@ edition = "2021"
 
     def _parse_go_output(
         self, stdout: str, stderr: str, duration: float
-    ) -> TestResult:
+    ) -> ExecutionResult:
         """Parse Go test output"""
-        result = TestResult(
-            framework=TestFramework.GO_TEST,
+        result = ExecutionResult(
+            framework=SupportedFramework.GO_TEST,
             duration_seconds=duration,
             output=stdout
         )
@@ -598,10 +597,10 @@ edition = "2021"
 
     def _parse_cargo_output(
         self, stdout: str, stderr: str, duration: float
-    ) -> TestResult:
+    ) -> ExecutionResult:
         """Parse Cargo test output"""
-        result = TestResult(
-            framework=TestFramework.CARGO_TEST,
+        result = ExecutionResult(
+            framework=SupportedFramework.CARGO_TEST,
             duration_seconds=duration,
             output=stdout
         )

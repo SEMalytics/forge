@@ -7,7 +7,6 @@ they're properly configured before agent runs.
 
 import asyncio
 from typing import Optional, Dict, Any
-from pathlib import Path
 
 from forge.utils.logger import logger
 from forge.integrations.codegen_client import CodeGenClient, CodeGenError

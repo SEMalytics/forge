@@ -7,16 +7,16 @@ from pathlib import Path
 from unittest.mock import Mock, patch, AsyncMock
 
 from forge.testing.generator import (
-    TestGenerator,
-    TestType,
+    TestSuiteGenerator,
+    TestCaseType,
     Language,
-    TestableEntity,
-    TestGenerationError
+    CodeEntity,
+    TestGenError
 )
 from forge.testing.docker_runner import (
     DockerTestRunner,
-    TestFramework,
-    TestResult,
+    SupportedFramework,
+    ExecutionResult,
     DockerConfig
 )
 from forge.testing.security_scanner import (
@@ -39,14 +39,14 @@ from forge.testing.performance import (
 
 def test_test_generator_initialization():
     """Test test generator initialization"""
-    generator = TestGenerator()
+    generator = TestSuiteGenerator()
     assert generator is not None
     assert generator.pattern_store is not None
 
 
 def test_detect_language_python():
     """Test language detection for Python"""
-    generator = TestGenerator()
+    generator = TestSuiteGenerator()
 
     assert generator._detect_language("test.py") == Language.PYTHON
     assert generator._detect_language("module.py") == Language.PYTHON
@@ -54,7 +54,7 @@ def test_detect_language_python():
 
 def test_detect_language_javascript():
     """Test language detection for JavaScript"""
-    generator = TestGenerator()
+    generator = TestSuiteGenerator()
 
     assert generator._detect_language("test.js") == Language.JAVASCRIPT
     assert generator._detect_language("test.jsx") == Language.JAVASCRIPT
@@ -64,7 +64,7 @@ def test_detect_language_javascript():
 
 def test_extract_python_entities():
     """Test extracting Python functions"""
-    generator = TestGenerator()
+    generator = TestSuiteGenerator()
 
     code = """
 def hello_world():
@@ -102,7 +102,7 @@ def _private_func():
 
 def test_extract_javascript_entities():
     """Test extracting JavaScript functions"""
-    generator = TestGenerator()
+    generator = TestSuiteGenerator()
 
     code = """
 function regularFunc(a, b) {
@@ -132,9 +132,9 @@ class MyClass {
 
 def test_generate_python_tests():
     """Test generating Python test cases"""
-    generator = TestGenerator()
+    generator = TestSuiteGenerator()
 
-    entity = TestableEntity(
+    entity = CodeEntity(
         name="calculate",
         type="function",
         signature="def calculate(x, y)",
@@ -143,7 +143,7 @@ def test_generate_python_tests():
         parameters=["x", "y"]
     )
 
-    test_cases = generator._generate_python_tests(entity, TestType.UNIT, [])
+    test_cases = generator._generate_python_tests(entity, TestCaseType.UNIT, [])
 
     # Should generate at least success and error tests
     assert len(test_cases) >= 2
@@ -153,7 +153,7 @@ def test_generate_python_tests():
 
 def test_get_test_file_path_python():
     """Test test file path generation for Python"""
-    generator = TestGenerator()
+    generator = TestSuiteGenerator()
 
     path = generator._get_test_file_path("src/module.py", Language.PYTHON)
     assert path == "tests/test_module.py"
@@ -161,7 +161,7 @@ def test_get_test_file_path_python():
 
 def test_get_test_file_path_javascript():
     """Test test file path generation for JavaScript"""
-    generator = TestGenerator()
+    generator = TestSuiteGenerator()
 
     path = generator._get_test_file_path("src/component.js", Language.JAVASCRIPT)
     assert path == "tests/component.test.js"
@@ -169,7 +169,7 @@ def test_get_test_file_path_javascript():
 
 def test_generate_tests_integration():
     """Test full test generation workflow"""
-    generator = TestGenerator()
+    generator = TestSuiteGenerator()
 
     code_files = {
         "calculator.py": """
@@ -185,7 +185,7 @@ def subtract(a, b):
         code_files=code_files,
         tech_stack=["Python"],
         project_context="Math library",
-        test_types=[TestType.UNIT]
+        test_types=[TestCaseType.UNIT]
     )
 
     # Should generate test file
@@ -215,7 +215,7 @@ def test_detect_framework_pytest():
     }
 
     framework = runner._detect_framework(test_files)
-    assert framework == TestFramework.PYTEST
+    assert framework == SupportedFramework.PYTEST
 
 
 def test_detect_framework_jest():
@@ -227,7 +227,7 @@ def test_detect_framework_jest():
     }
 
     framework = runner._detect_framework(test_files)
-    assert framework == TestFramework.JEST
+    assert framework == SupportedFramework.JEST
 
 
 def test_parse_pytest_output():
@@ -594,8 +594,8 @@ async def test_full_testing_workflow():
 
 def test_test_result_success():
     """Test result success property"""
-    result = TestResult(
-        framework=TestFramework.PYTEST,
+    result = ExecutionResult(
+        framework=SupportedFramework.PYTEST,
         passed=10,
         failed=0,
         skipped=1
@@ -607,8 +607,8 @@ def test_test_result_success():
 
 def test_test_result_failure():
     """Test result failure property"""
-    result = TestResult(
-        framework=TestFramework.PYTEST,
+    result = ExecutionResult(
+        framework=SupportedFramework.PYTEST,
         passed=10,
         failed=2,
         skipped=1

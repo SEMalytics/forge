@@ -133,7 +133,7 @@ class GitHubClient:
                 try:
                     error_data = e.response.json()
                     error_msg += f" - {error_data.get('message', '')}"
-                except:
+                except Exception:
                     pass
 
             logger.error(error_msg)

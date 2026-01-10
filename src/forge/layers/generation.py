@@ -8,7 +8,7 @@ and progress tracking.
 import asyncio
 import time
 from typing import List, Dict, Optional, Set
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
@@ -16,10 +16,10 @@ from rich.progress import Progress, TaskID, SpinnerColumn, TextColumn, BarColumn
 from rich.console import Console
 from rich.table import Table
 
-from forge.generators.base import CodeGenerator, GenerationContext, GenerationResult, GeneratorError
+from forge.generators.base import CodeGenerator, GenerationContext, GenerationResult
 from forge.integrations.compound_engineering import Task
 from forge.core.state_manager import StateManager
-from forge.core.context import ContextManager, ContextType, ContextWindow
+from forge.core.context import ContextManager, ContextType
 from forge.git.worktree import WorktreeManager, WorktreeInfo, WorktreeError
 from forge.utils.logger import logger
 from forge.utils.errors import ForgeError
@@ -439,7 +439,7 @@ class GenerationOrchestrator:
 
         # Build adjacency list and in-degree map
         in_degree = {exec.task.id: 0 for exec in executions}
-        exec_map = {exec.task.id: exec for exec in executions}
+        _exec_map = {exec.task.id: exec for exec in executions}  # noqa: F841
 
         for execution in executions:
             for dep in execution.task.dependencies:
@@ -629,7 +629,7 @@ class GenerationOrchestrator:
         self.console.print(table)
 
         # Overall stats
-        self.console.print(f"\n[bold]Overall:[/bold]")
+        self.console.print("\n[bold]Overall:[/bold]")
         self.console.print(f"  Tasks: {success_count}/{len(results)} successful")
         self.console.print(f"  Files: {total_files} generated")
         self.console.print(f"  Duration: {total_duration:.1f}s")
@@ -830,7 +830,7 @@ class GenerationOrchestrator:
 
         # Add tech stack context
         if tech_stack:
-            tech_content = f"Technology Stack:\n- " + "\n- ".join(tech_stack)
+            tech_content = "Technology Stack:\n- " + "\n- ".join(tech_stack)
             self.context_manager.add(
                 id=f"tech_stack_{project_id}",
                 content=tech_content,

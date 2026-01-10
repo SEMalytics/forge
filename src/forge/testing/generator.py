@@ -10,7 +10,7 @@ Generates comprehensive test suites covering:
 
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -19,7 +19,7 @@ from forge.utils.logger import logger
 from forge.utils.errors import ForgeError
 
 
-class TestGenerationError(ForgeError):
+class TestGenError(ForgeError):
     """Errors during test generation"""
     pass
 
@@ -34,7 +34,7 @@ class Language(Enum):
     RUST = "rust"
 
 
-class TestType(Enum):
+class TestCaseType(Enum):
     """Test categories"""
     UNIT = "unit"
     INTEGRATION = "integration"
@@ -43,7 +43,7 @@ class TestType(Enum):
 
 
 @dataclass
-class TestableEntity:
+class CodeEntity:
     """Represents a testable code entity"""
     name: str
     type: str  # function, class, method, endpoint
@@ -60,13 +60,13 @@ class TestableEntity:
 class TestCase:
     """Represents a generated test case"""
     name: str
-    entity: TestableEntity
-    test_type: TestType
+    entity: CodeEntity
+    test_type: TestCaseType
     code: str
     description: str
 
 
-class TestGenerator:
+class TestSuiteGenerator:
     """
     Generates tests from code analysis and KF patterns.
 
@@ -108,14 +108,14 @@ class TestGenerator:
             pattern_store: KnowledgeForge pattern store
         """
         self.pattern_store = pattern_store or PatternStore()
-        logger.info("Initialized TestGenerator")
+        logger.info("Initialized TestSuiteGenerator")
 
     def generate_tests(
         self,
         code_files: Dict[str, str],
         tech_stack: Optional[List[str]] = None,
         project_context: str = "",
-        test_types: Optional[List[TestType]] = None
+        test_types: Optional[List[TestCaseType]] = None
     ) -> Dict[str, str]:
         """
         Generate tests for code files.
@@ -130,12 +130,12 @@ class TestGenerator:
             Dictionary mapping test file paths to test content
 
         Raises:
-            TestGenerationError: If generation fails
+            TestGenError: If generation fails
         """
         logger.info(f"Generating tests for {len(code_files)} files")
 
         if test_types is None:
-            test_types = [TestType.UNIT, TestType.INTEGRATION, TestType.E2E]
+            test_types = [TestCaseType.UNIT, TestCaseType.INTEGRATION, TestCaseType.E2E]
 
         # Load test patterns
         test_patterns = self._load_test_patterns(tech_stack)
@@ -195,7 +195,7 @@ class TestGenerator:
         path = Path(file_path)
         return self.LANGUAGE_EXTENSIONS.get(path.suffix)
 
-    def _extract_entities(self, file_path: str, content: str) -> List[TestableEntity]:
+    def _extract_entities(self, file_path: str, content: str) -> List[CodeEntity]:
         """Extract testable entities from code"""
         language = self._detect_language(file_path)
         if not language:
@@ -214,10 +214,10 @@ class TestGenerator:
 
         return []
 
-    def _extract_python_entities(self, file_path: str, content: str) -> List[TestableEntity]:
+    def _extract_python_entities(self, file_path: str, content: str) -> List[CodeEntity]:
         """Extract Python functions and classes"""
         entities = []
-        lines = content.split('\n')
+        _lines = content.split('\n')  # noqa: F841
 
         # Find functions
         func_pattern = re.compile(r'^(async\s+)?def\s+(\w+)\s*\((.*?)\)\s*(?:->\s*(.+?))?:', re.MULTILINE)
@@ -233,7 +233,7 @@ class TestGenerator:
 
             line_num = content[:match.start()].count('\n') + 1
 
-            entities.append(TestableEntity(
+            entities.append(CodeEntity(
                 name=name,
                 type='function',
                 signature=f"def {name}({params})",
@@ -250,7 +250,7 @@ class TestGenerator:
             name = match.group(1)
             line_num = content[:match.start()].count('\n') + 1
 
-            entities.append(TestableEntity(
+            entities.append(CodeEntity(
                 name=name,
                 type='class',
                 signature=f"class {name}",
@@ -260,7 +260,7 @@ class TestGenerator:
 
         return entities
 
-    def _extract_javascript_entities(self, file_path: str, content: str) -> List[TestableEntity]:
+    def _extract_javascript_entities(self, file_path: str, content: str) -> List[CodeEntity]:
         """Extract JavaScript/TypeScript functions and classes"""
         entities = []
 
@@ -280,7 +280,7 @@ class TestGenerator:
 
                 line_num = content[:match.start()].count('\n') + 1
 
-                entities.append(TestableEntity(
+                entities.append(CodeEntity(
                     name=name,
                     type='function',
                     signature=f"function {name}({params})",
@@ -296,7 +296,7 @@ class TestGenerator:
             name = match.group(1)
             line_num = content[:match.start()].count('\n') + 1
 
-            entities.append(TestableEntity(
+            entities.append(CodeEntity(
                 name=name,
                 type='class',
                 signature=f"class {name}",
@@ -306,7 +306,7 @@ class TestGenerator:
 
         return entities
 
-    def _extract_go_entities(self, file_path: str, content: str) -> List[TestableEntity]:
+    def _extract_go_entities(self, file_path: str, content: str) -> List[CodeEntity]:
         """Extract Go functions"""
         entities = []
 
@@ -322,7 +322,7 @@ class TestGenerator:
 
             line_num = content[:match.start()].count('\n') + 1
 
-            entities.append(TestableEntity(
+            entities.append(CodeEntity(
                 name=name,
                 type='function',
                 signature=f"func {name}({params})",
@@ -333,7 +333,7 @@ class TestGenerator:
 
         return entities
 
-    def _extract_ruby_entities(self, file_path: str, content: str) -> List[TestableEntity]:
+    def _extract_ruby_entities(self, file_path: str, content: str) -> List[CodeEntity]:
         """Extract Ruby methods and classes"""
         entities = []
 
@@ -345,7 +345,7 @@ class TestGenerator:
 
             line_num = content[:match.start()].count('\n') + 1
 
-            entities.append(TestableEntity(
+            entities.append(CodeEntity(
                 name=name,
                 type='method',
                 signature=f"def {name}({params})",
@@ -360,7 +360,7 @@ class TestGenerator:
             name = match.group(1)
             line_num = content[:match.start()].count('\n') + 1
 
-            entities.append(TestableEntity(
+            entities.append(CodeEntity(
                 name=name,
                 type='class',
                 signature=f"class {name}",
@@ -370,7 +370,7 @@ class TestGenerator:
 
         return entities
 
-    def _extract_rust_entities(self, file_path: str, content: str) -> List[TestableEntity]:
+    def _extract_rust_entities(self, file_path: str, content: str) -> List[CodeEntity]:
         """Extract Rust functions"""
         entities = []
 
@@ -383,7 +383,7 @@ class TestGenerator:
 
             line_num = content[:match.start()].count('\n') + 1
 
-            entities.append(TestableEntity(
+            entities.append(CodeEntity(
                 name=name,
                 type='function',
                 signature=f"fn {name}({params})",
@@ -397,8 +397,8 @@ class TestGenerator:
 
     def _generate_test_cases(
         self,
-        entity: TestableEntity,
-        test_type: TestType,
+        entity: CodeEntity,
+        test_type: TestCaseType,
         language: Language,
         patterns: List[Dict]
     ) -> List[TestCase]:
@@ -417,12 +417,12 @@ class TestGenerator:
         return []
 
     def _generate_python_tests(
-        self, entity: TestableEntity, test_type: TestType, patterns: List[Dict]
+        self, entity: CodeEntity, test_type: TestCaseType, patterns: List[Dict]
     ) -> List[TestCase]:
         """Generate pytest test cases"""
         tests = []
 
-        if entity.type == 'function' and test_type == TestType.UNIT:
+        if entity.type == 'function' and test_type == TestCaseType.UNIT:
             # Happy path test
             test_name = f"test_{entity.name}_success"
             test_code = f"""def {test_name}():
@@ -466,12 +466,12 @@ class TestGenerator:
         return tests
 
     def _generate_javascript_tests(
-        self, entity: TestableEntity, test_type: TestType, patterns: List[Dict]
+        self, entity: CodeEntity, test_type: TestCaseType, patterns: List[Dict]
     ) -> List[TestCase]:
         """Generate Jest test cases"""
         tests = []
 
-        if entity.type == 'function' and test_type == TestType.UNIT:
+        if entity.type == 'function' and test_type == TestCaseType.UNIT:
             test_name = f"{entity.name} should work with valid inputs"
             test_code = f"""test('{test_name}', {"async " if entity.is_async else ""}() => {{
   // Arrange
@@ -495,12 +495,12 @@ class TestGenerator:
         return tests
 
     def _generate_go_tests(
-        self, entity: TestableEntity, test_type: TestType, patterns: List[Dict]
+        self, entity: CodeEntity, test_type: TestCaseType, patterns: List[Dict]
     ) -> List[TestCase]:
         """Generate Go test cases"""
         tests = []
 
-        if entity.type == 'function' and test_type == TestType.UNIT:
+        if entity.type == 'function' and test_type == TestCaseType.UNIT:
             test_name = f"Test{entity.name}"
             test_code = f"""func {test_name}(t *testing.T) {{
 	// Arrange
@@ -526,13 +526,13 @@ class TestGenerator:
         return tests
 
     def _generate_ruby_tests(
-        self, entity: TestableEntity, test_type: TestType, patterns: List[Dict]
+        self, entity: CodeEntity, test_type: TestCaseType, patterns: List[Dict]
     ) -> List[TestCase]:
         """Generate RSpec test cases"""
         tests = []
 
-        if entity.type == 'method' and test_type == TestType.UNIT:
-            test_name = f"returns expected result"
+        if entity.type == 'method' and test_type == TestCaseType.UNIT:
+            test_name = "returns expected result"
             test_code = f"""  it '{test_name}' do
     # Arrange
     # TODO: Set up test data
@@ -555,12 +555,12 @@ class TestGenerator:
         return tests
 
     def _generate_rust_tests(
-        self, entity: TestableEntity, test_type: TestType, patterns: List[Dict]
+        self, entity: CodeEntity, test_type: TestCaseType, patterns: List[Dict]
     ) -> List[TestCase]:
         """Generate Rust test cases"""
         tests = []
 
-        if entity.type == 'function' and test_type == TestType.UNIT:
+        if entity.type == 'function' and test_type == TestCaseType.UNIT:
             test_name = f"test_{entity.name}"
             test_code = f"""#[test]
 fn {test_name}() {{

@@ -6,7 +6,6 @@ to create optimized, pattern-backed task breakdowns.
 """
 
 from typing import List, Dict, Optional, Any
-from pathlib import Path
 
 from forge.knowledgeforge.pattern_store import PatternStore
 from forge.integrations.compound_engineering import (
@@ -159,7 +158,7 @@ class TaskDecomposer:
         """
         relevant = []
 
-        task_text = f"{task.title} {task.description}".lower()
+        _task_text = f"{task.title} {task.description}".lower()  # noqa: F841
         task_tags = set(task.tags)
 
         for pattern in patterns:

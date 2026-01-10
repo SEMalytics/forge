@@ -11,7 +11,7 @@ fixes to apply and in what order.
 
 import json
 from enum import Enum
-from typing import Dict, List, Optional, Callable, Any
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -19,8 +19,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.prompt import Prompt, Confirm
-from rich.markdown import Markdown
+from rich.prompt import Prompt
 
 from forge.layers.failure_analyzer import FixSuggestion, Priority, FailureType
 from forge.utils.logger import logger
@@ -285,7 +284,7 @@ class TriageWorkflow:
             return None
 
         try:
-            data = json.loads(session_file.read_text())
+            _data = json.loads(session_file.read_text())  # noqa: F841
             # Reconstruct session (simplified - would need full reconstruction in production)
             logger.info(f"Loaded triage session: {session_id}")
             return self._current_session
@@ -444,20 +443,20 @@ class TriageWorkflow:
         content.append(f"Category: {finding.category.value}")
         content.append(f"Confidence: {suggestion.confidence:.0%}")
         content.append("")
-        content.append(f"[bold]Root Cause:[/bold]")
+        content.append("[bold]Root Cause:[/bold]")
         content.append(f"  {suggestion.root_cause}")
         content.append("")
-        content.append(f"[bold]Suggested Fix:[/bold]")
+        content.append("[bold]Suggested Fix:[/bold]")
         content.append(f"  {suggestion.suggested_fix}")
 
         if suggestion.explanation:
             content.append("")
-            content.append(f"[bold]Explanation:[/bold]")
+            content.append("[bold]Explanation:[/bold]")
             content.append(f"  {suggestion.explanation}")
 
         if suggestion.code_changes:
             content.append("")
-            content.append(f"[bold]Files to modify:[/bold]")
+            content.append("[bold]Files to modify:[/bold]")
             for change in suggestion.code_changes[:3]:
                 content.append(f"  • {change.get('file', 'unknown')}")
 
@@ -524,7 +523,7 @@ class TriageWorkflow:
             if choice == "n":
                 note = Prompt.ask("Note")
                 finding.user_notes = note
-                self.console.print(f"[dim]Note added[/dim]")
+                self.console.print("[dim]Note added[/dim]")
                 continue
 
             if choice == "q":

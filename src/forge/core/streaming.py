@@ -13,14 +13,14 @@ Features:
 """
 
 import asyncio
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import (
-    Dict, List, Optional, Any, Callable, AsyncIterator,
-    Protocol, runtime_checkable, Union
+    Dict, List, Optional, Any, Callable, Protocol, runtime_checkable, TYPE_CHECKING
 )
+
+if TYPE_CHECKING:
+    from rich.progress import Progress, TaskID
 from enum import Enum
-from datetime import datetime
 import time
 
 from forge.utils.logger import logger
@@ -558,10 +558,10 @@ class ConsoleStreamHandler:
         self.show_files = show_files
         self.show_logs = show_logs
 
-        self._progress = None
-        self._task_id = None
-        self._current_file = None
-        self._token_buffer = []
+        self._progress: Optional["Progress"] = None
+        self._task_id: Optional["TaskID"] = None
+        self._current_file: Optional[str] = None
+        self._token_buffer: List[str] = []
 
     async def handle_event(self, event: StreamEvent) -> None:
         """Handle stream event"""

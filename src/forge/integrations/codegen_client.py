@@ -134,8 +134,8 @@ class CodeGenClient:
         if "repo_id" in payload and payload.get("agent_type") not in ["codegen", None]:
             agent_type = payload.get("agent_type")
             logger.warning(f"⚠️ Using agent_type='{agent_type}' with repo_id may not work")
-            logger.warning(f"   Recommended: agent_type='codegen' for repository-scoped operations")
-            logger.warning(f"   Note: agent_type='claude_code' does NOT support repo_id via API")
+            logger.warning("   Recommended: agent_type='codegen' for repository-scoped operations")
+            logger.warning("   Note: agent_type='claude_code' does NOT support repo_id via API")
 
         # Validate repo_id is an integer if present
         if "repo_id" in payload:

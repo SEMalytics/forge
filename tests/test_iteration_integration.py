@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 from forge.layers.failure_analyzer import FailureAnalyzer, FailureType, Priority
 from forge.layers.fix_generator import FixGenerator
-from forge.testing.docker_runner import TestResult, TestFramework
+from forge.testing.docker_runner import ExecutionResult, SupportedFramework
 
 
 def test_failure_analyzer_with_real_pytest_output():
@@ -39,7 +39,7 @@ FAILED test_calculator.py::test_multiply - AssertionError: assert 5 == 6
 ========================= 1 failed, 4 passed in 0.12s ==========================
 """
 
-    test_result = TestResult(framework=TestFramework.PYTEST)
+    test_result = ExecutionResult(framework=SupportedFramework.PYTEST)
     test_result.passed = 4
     test_result.failed = 1
     test_result.output = pytest_output

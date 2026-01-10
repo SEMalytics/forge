@@ -13,7 +13,6 @@ from typing import List, Optional, Dict
 from dataclasses import dataclass
 from enum import Enum
 
-from forge.utils.logger import logger
 
 
 class CommitType(Enum):

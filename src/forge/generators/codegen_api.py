@@ -6,10 +6,9 @@ Supports streaming output for real-time progress feedback.
 """
 
 import httpx
-import asyncio
 import time
 import re
-from typing import Dict, List, Optional, Any, TYPE_CHECKING
+from typing import Dict, Optional, Any, TYPE_CHECKING
 
 from forge.generators.base import (
     CodeGenerator,
@@ -21,6 +20,7 @@ from forge.utils.logger import logger
 
 if TYPE_CHECKING:
     from forge.core.streaming import StreamEmitter
+    from forge.integrations.codegen_client import CodeGenClient
 
 
 class CodeGenAPIGenerator(CodeGenerator):
@@ -249,7 +249,7 @@ class CodeGenAPIGenerator(CodeGenerator):
             await emitter.progress(0.15)
 
             # Initialize CodeGen client
-            from forge.integrations.codegen_client import CodeGenClient, CodeGenError
+            from forge.integrations.codegen_client import CodeGenClient
 
             codegen_client = CodeGenClient(
                 api_token=self.api_key,
@@ -486,7 +486,7 @@ class CodeGenAPIGenerator(CodeGenerator):
                 logger.info(f"Found CodeGen repository '{repo.get('name')}' (ID: {repo_id})")
 
                 # Check repository setup status
-                await _ensure_repository_setup(client, repo_id, repo)
+                await self._ensure_repository_setup(client, repo_id, repo)
 
                 return repo_id
 
@@ -497,7 +497,7 @@ class CodeGenAPIGenerator(CodeGenerator):
                 logger.info(f"Found CodeGen repository '{repo.get('name')}' (ID: {repo_id})")
 
                 # Check repository setup status
-                await _ensure_repository_setup(client, repo_id, repo)
+                await self._ensure_repository_setup(client, repo_id, repo)
 
                 return repo_id
 
@@ -510,12 +510,12 @@ class CodeGenAPIGenerator(CodeGenerator):
             logger.error("To fix this:")
             logger.error("")
             logger.error("1. Ensure GitHub App is installed:")
-            logger.error(f"   Go to: https://github.com/apps/codegen-sh")
+            logger.error("   Go to: https://github.com/apps/codegen-sh")
             logger.error(f"   Click 'Configure' next to {owner}")
             logger.error(f"   Select '{repo_identifier}' repository")
             logger.error("")
             logger.error("2. Find your repository ID:")
-            logger.error(f"   Go to: https://codegen.com/repos")
+            logger.error("   Go to: https://codegen.com/repos")
             logger.error(f"   Find '{repo_identifier}' in the list")
             logger.error("   Note the repository ID (shown in URL or repo details)")
             logger.error("")
@@ -589,7 +589,7 @@ class CodeGenAPIGenerator(CodeGenerator):
             prompt_parts.append("## Existing File Structure")
             for filepath, content in context.file_structure.items():
                 prompt_parts.append(f"### {filepath}")
-                prompt_parts.append(f"```")
+                prompt_parts.append("```")
                 prompt_parts.append(content[:500])  # First 500 chars
                 prompt_parts.append("```")
             prompt_parts.append("")

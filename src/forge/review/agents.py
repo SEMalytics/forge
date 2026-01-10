@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class ReviewSeverity(Enum):
@@ -488,7 +488,7 @@ class ArchitectureReviewer(ReviewAgent):
         return f"Found {len(findings)} architectural concerns."
 
 
-class TestingReviewer(ReviewAgent):
+class QualityReviewer(ReviewAgent):
     """
     Testing Expert Reviewer
 
@@ -596,7 +596,7 @@ class TestingReviewer(ReviewAgent):
             ))
 
         # Check for functions without return values that could be tested
-        void_functions = re.findall(r"def\s+(\w+)\([^)]*\)\s*:\s*\n(?:(?!\s*return\s+\S).*\n)*(?:\s*return\s*\n|\Z)", code)
+        _void_functions = re.findall(r"def\s+(\w+)\([^)]*\)\s*:\s*\n(?:(?!\s*return\s+\S).*\n)*(?:\s*return\s*\n|\Z)", code)  # noqa: F841
         # This is informational only
 
         return findings
@@ -1048,7 +1048,7 @@ class ConcurrencyReviewer(ReviewAgent):
                     ))
 
             # Check for missing await
-            async_calls = re.findall(r"(\w+)\s*\(\s*\)(?!\s*[,\)])", code)
+            _async_calls = re.findall(r"(\w+)\s*\(\s*\)(?!\s*[,\)])", code)  # noqa: F841
             # This is a simple heuristic - not perfect
 
         # Check for thread-unsafe operations
@@ -1158,7 +1158,7 @@ class DataValidationReviewer(ReviewAgent):
                 findings.append(ReviewFinding(
                     severity=ReviewSeverity.MEDIUM,
                     category="null_safety",
-                    message=f"Chained call after .get() may fail if key is missing",
+                    message="Chained call after .get() may fail if key is missing",
                     file_path=file_path,
                     suggestion="Use .get() with default or check for None first"
                 ))
@@ -1210,7 +1210,7 @@ class MaintainabilityReviewer(ReviewAgent):
         func_pattern = r"def\s+(\w+)[^:]+:\s*\n((?:(?!\ndef\s).*\n)*)"
         for match in re.finditer(func_pattern, code):
             func_name, body = match.groups()
-            line_count = len([l for l in body.split("\n") if l.strip()])
+            line_count = len([ln for ln in body.split("\n") if ln.strip()])
             if line_count > 50:
                 findings.append(ReviewFinding(
                     severity=ReviewSeverity.MEDIUM,
@@ -1227,7 +1227,7 @@ class MaintainabilityReviewer(ReviewAgent):
                 ))
 
         # Check for code duplication (simple check)
-        lines = [l.strip() for l in code.split("\n") if l.strip() and not l.strip().startswith("#")]
+        lines = [ln.strip() for ln in code.split("\n") if ln.strip() and not ln.strip().startswith("#")]
         seen: Dict[str, int] = {}
         for line in lines:
             if len(line) > 30:  # Only check substantial lines
@@ -1245,7 +1245,7 @@ class MaintainabilityReviewer(ReviewAgent):
 
         # Check nesting depth
         max_depth = 0
-        current_depth = 0
+        _current_depth = 0  # noqa: F841
         for line in code.split("\n"):
             stripped = line.lstrip()
             indent = len(line) - len(stripped)
@@ -1324,7 +1324,7 @@ class IntegrationReviewer(ReviewAgent):
 
         # Check for version-specific features without guards
         python_310_features = ["match ", "case "]
-        python_39_features = ["dict | dict", "list | list"]
+        _python_39_features = ["dict | dict", "list | list"]  # noqa: F841
         python_38_features = [":="]
 
         for feature in python_310_features:
@@ -1332,7 +1332,7 @@ class IntegrationReviewer(ReviewAgent):
                 findings.append(ReviewFinding(
                     severity=ReviewSeverity.INFO,
                     category="compatibility",
-                    message=f"Pattern matching requires Python 3.10+",
+                    message="Pattern matching requires Python 3.10+",
                     file_path=file_path
                 ))
                 break
@@ -1342,7 +1342,7 @@ class IntegrationReviewer(ReviewAgent):
                 findings.append(ReviewFinding(
                     severity=ReviewSeverity.INFO,
                     category="compatibility",
-                    message=f"Walrus operator requires Python 3.8+",
+                    message="Walrus operator requires Python 3.8+",
                     file_path=file_path
                 ))
                 break

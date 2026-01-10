@@ -11,7 +11,6 @@ Supports:
 Generates deployment configurations and handles deployment process.
 """
 
-import os
 import json
 import yaml
 from typing import List, Optional, Dict

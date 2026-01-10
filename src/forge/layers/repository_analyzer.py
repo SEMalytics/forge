@@ -63,7 +63,7 @@ class NamingConventions:
 
 
 @dataclass
-class TestInfo:
+class QAInfo:
     """Information about testing setup"""
     framework: Optional[str] = None
     test_directory: Optional[str] = None
@@ -135,7 +135,7 @@ class RepositoryContext:
     code_patterns: List[str] = field(default_factory=list)
 
     # Testing
-    test_info: TestInfo = field(default_factory=TestInfo)
+    test_info: QAInfo = field(default_factory=QAInfo)
 
     # Dependencies
     dependency_info: DependencyInfo = field(default_factory=DependencyInfo)
@@ -184,20 +184,20 @@ class RepositoryContext:
 
         # Key directories
         if self.key_directories:
-            sections.append(f"\n### Key Directories")
+            sections.append("\n### Key Directories")
             for d in self.key_directories[:10]:
                 sections.append(f"- {d}")
 
         # Naming conventions
         nc = self.naming_conventions
-        sections.append(f"\n### Naming Conventions")
+        sections.append("\n### Naming Conventions")
         sections.append(f"- Files: {nc.file_naming}")
         sections.append(f"- Functions: {nc.function_naming}")
         sections.append(f"- Classes: {nc.class_naming}")
 
         # Dependencies
         if self.dependency_info.package_manager:
-            sections.append(f"\n### Dependencies")
+            sections.append("\n### Dependencies")
             sections.append(f"Package Manager: {self.dependency_info.package_manager}")
             if self.dependency_info.python_version:
                 sections.append(f"Python: {self.dependency_info.python_version}")
@@ -211,14 +211,14 @@ class RepositoryContext:
 
         # Testing
         if self.test_info.framework:
-            sections.append(f"\n### Testing")
+            sections.append("\n### Testing")
             sections.append(f"Framework: {self.test_info.framework}")
             sections.append(f"Test Directory: {self.test_info.test_directory}")
             sections.append(f"Pattern: {self.test_info.test_file_pattern}")
 
         # Code patterns
         if self.code_patterns:
-            sections.append(f"\n### Detected Patterns")
+            sections.append("\n### Detected Patterns")
             for pattern in self.code_patterns[:5]:
                 sections.append(f"- {pattern}")
 
@@ -228,7 +228,7 @@ class RepositoryContext:
             readme_preview = self.readme_content[:500]
             if len(self.readme_content) > 500:
                 readme_preview += "..."
-            sections.append(f"\n### README Preview")
+            sections.append("\n### README Preview")
             sections.append(readme_preview)
 
         return "\n".join(sections)
@@ -456,7 +456,7 @@ class RepositoryAnalyzer:
         )
 
         ti_data = data.get("test_info", {})
-        test_info = TestInfo(
+        test_info = QAInfo(
             framework=ti_data.get("framework"),
             test_directory=ti_data.get("test_directory"),
             test_file_pattern=ti_data.get("test_file_pattern", "test_*.py"),
@@ -621,7 +621,7 @@ class RepositoryAnalyzer:
                 snake += 1
             elif "-" in name:
                 kebab += 1
-            elif name[0].isupper() and not "_" in name:
+            elif name[0].isupper() and "_" not in name:
                 pascal += 1
             elif name[0].islower() and any(c.isupper() for c in name):
                 camel += 1
@@ -840,7 +840,7 @@ class RepositoryAnalyzer:
 
     def _analyze_testing(self, repo_path: Path, context: RepositoryContext):
         """Analyze testing setup."""
-        test_info = TestInfo()
+        test_info = QAInfo()
 
         # Check for test directories
         for test_dir in ["tests", "test", "spec", "__tests__"]:

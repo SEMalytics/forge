@@ -13,7 +13,7 @@ Provides comprehensive test reporting and validation.
 import asyncio
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 
 from rich.progress import Progress, TaskID, SpinnerColumn, TextColumn, BarColumn
@@ -21,9 +21,9 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
-from forge.testing.generator import TestGenerator, TestType
-from forge.testing.docker_runner import DockerTestRunner, TestResult, TestFramework
-from forge.testing.security_scanner import SecurityScanner, ScanResult, Severity
+from forge.testing.generator import TestSuiteGenerator, TestCaseType
+from forge.testing.docker_runner import DockerTestRunner, ExecutionResult, SupportedFramework
+from forge.testing.security_scanner import SecurityScanner, ScanResult
 from forge.testing.performance import PerformanceBenchmark, BenchmarkResult, PerformanceThresholds
 from forge.utils.logger import logger
 from forge.utils.errors import ForgeError
@@ -57,8 +57,8 @@ class ComprehensiveTestReport:
     project_id: str
 
     # Test execution
-    unit_test_result: Optional[TestResult] = None
-    integration_test_result: Optional[TestResult] = None
+    unit_test_result: Optional[ExecutionResult] = None
+    integration_test_result: Optional[ExecutionResult] = None
 
     # Security
     security_scan_result: Optional[ScanResult] = None
@@ -136,7 +136,7 @@ class TestingOrchestrator:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Initialize components
-        self.test_generator = TestGenerator()
+        self.test_generator = TestSuiteGenerator()
         self.docker_runner = DockerTestRunner()
         self.security_scanner = SecurityScanner()
         self.performance_benchmark = PerformanceBenchmark()
@@ -267,7 +267,7 @@ class TestingOrchestrator:
             code_files=code_files,
             tech_stack=tech_stack,
             project_context=project_context,
-            test_types=[TestType.UNIT, TestType.INTEGRATION]
+            test_types=[TestCaseType.UNIT, TestCaseType.INTEGRATION]
         )
 
         progress.update(task_id, completed=90)
@@ -281,7 +281,7 @@ class TestingOrchestrator:
         source_files: Dict[str, str],
         progress: Progress,
         task_id: TaskID
-    ) -> TestResult:
+    ) -> ExecutionResult:
         """Run unit tests"""
         progress.update(task_id, completed=10)
 
@@ -312,7 +312,7 @@ class TestingOrchestrator:
         source_files: Dict[str, str],
         progress: Progress,
         task_id: TaskID
-    ) -> TestResult:
+    ) -> ExecutionResult:
         """Run integration tests"""
         progress.update(task_id, completed=10)
 
@@ -324,7 +324,7 @@ class TestingOrchestrator:
 
         if not integration_tests:
             # No integration tests found
-            return TestResult(framework=TestFramework.PYTEST)
+            return ExecutionResult(framework=SupportedFramework.PYTEST)
 
         result = await self.docker_runner.run_tests(
             test_files=integration_tests,

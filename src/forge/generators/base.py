@@ -7,7 +7,7 @@ Supports streaming output for real-time progress feedback.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, AsyncIterator, TYPE_CHECKING
+from typing import Dict, List, Optional, Any, TYPE_CHECKING
 from enum import Enum
 from datetime import datetime
 

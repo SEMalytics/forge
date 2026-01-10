@@ -3,10 +3,8 @@ Forge CLI using Click
 """
 
 import click
-from rich.console import Console
 from pathlib import Path
 import sys
-import os
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -14,9 +12,9 @@ env_file = Path(__file__).parent.parent.parent.parent / '.env'
 if env_file.exists():
     load_dotenv(env_file)
 
-from forge.core.config import ForgeConfig
-from forge.core.orchestrator import Orchestrator
-from forge.cli.output import (
+from forge.core.config import ForgeConfig  # noqa: E402
+from forge.core.orchestrator import Orchestrator  # noqa: E402
+from forge.cli.output import (  # noqa: E402
     print_banner,
     print_success,
     print_error,
@@ -27,7 +25,7 @@ from forge.cli.output import (
     print_system_status,
     console
 )
-from forge.utils.logger import setup_logger
+from forge.utils.logger import setup_logger  # noqa: E402
 
 # Setup logger
 logger = setup_logger()
@@ -231,7 +229,7 @@ def status(ctx, project_id):
                 table.add_row(project.id, project.name, project.stage, created)
 
             console.print(table)
-            console.print(f"\n💡 Tip: Use [cyan]forge status <project-id>[/cyan] for detailed status\n")
+            console.print("\n💡 Tip: Use [cyan]forge status <project-id>[/cyan] for detailed status\n")
             state.close()
             return
 
@@ -392,14 +390,14 @@ def analyze(repo_path, force, output_json, verbose):
 
         # Naming conventions
         nc = context.naming_conventions
-        console.print(f"\n[bold]Naming Conventions:[/bold]")
+        console.print("\n[bold]Naming Conventions:[/bold]")
         console.print(f"  Files: {nc.file_naming}")
         console.print(f"  Functions: {nc.function_naming}")
         console.print(f"  Classes: {nc.class_naming}")
 
         # Dependencies
         if context.dependency_info.package_manager:
-            console.print(f"\n[bold]Dependencies:[/bold]")
+            console.print("\n[bold]Dependencies:[/bold]")
             console.print(f"  Package Manager: {context.dependency_info.package_manager}")
             if context.dependency_info.python_version:
                 console.print(f"  Python: {context.dependency_info.python_version}")
@@ -416,26 +414,26 @@ def analyze(repo_path, force, output_json, verbose):
 
         # Testing
         if context.test_info.framework:
-            console.print(f"\n[bold]Testing:[/bold]")
+            console.print("\n[bold]Testing:[/bold]")
             console.print(f"  Framework: {context.test_info.framework}")
             console.print(f"  Directory: {context.test_info.test_directory or 'Not found'}")
             console.print(f"  Test Files: {context.test_info.test_count}")
 
         # Patterns
         if context.code_patterns:
-            console.print(f"\n[bold]Detected Patterns:[/bold]")
+            console.print("\n[bold]Detected Patterns:[/bold]")
             for pattern in context.code_patterns:
                 console.print(f"  • {pattern}")
 
         # Key directories
         if verbose and context.key_directories:
-            console.print(f"\n[bold]Key Directories:[/bold]")
+            console.print("\n[bold]Key Directories:[/bold]")
             for d in context.key_directories:
                 console.print(f"  📂 {d}/")
 
         # Config files
         if verbose and context.config_files:
-            console.print(f"\n[bold]Config Files:[/bold]")
+            console.print("\n[bold]Config Files:[/bold]")
             for f in context.config_files[:10]:
                 console.print(f"  📄 {f}")
 
@@ -593,7 +591,7 @@ def decompose(description, tech_stack, project_id, save, visualize):
         decomposer = TaskDecomposer(pattern_store=store)
 
         # Perform decomposition
-        console.print(f"[dim]Analyzing project...[/dim]")
+        console.print("[dim]Analyzing project...[/dim]")
         tech_list = list(tech_stack) if tech_stack else None
 
         with console.status("[bold green]Decomposing project..."):
@@ -658,7 +656,7 @@ def decompose(description, tech_stack, project_id, save, visualize):
                 console.print(f"  [yellow]Dependencies:[/yellow] {', '.join(task.dependencies)}")
 
             if task.acceptance_criteria:
-                console.print(f"  [green]Acceptance Criteria:[/green]")
+                console.print("  [green]Acceptance Criteria:[/green]")
                 for criterion in task.acceptance_criteria[:3]:
                     console.print(f"    • {criterion}")
 
@@ -730,7 +728,6 @@ def build(project_id, backend, parallel, max_parallel, resume, force):
     import asyncio
     from forge.generators.factory import GeneratorFactory, GeneratorBackend
     from forge.layers.generation import GenerationOrchestrator
-    from forge.layers.decomposition import TaskDecomposer
     from forge.core.state_manager import StateManager
     from forge.core.config import ForgeConfig
 
@@ -1046,7 +1043,7 @@ def iterate(project_id, max_iterations):
         # Show learning stats
         if summary.learning_database_updated:
             stats = review.get_learning_statistics()
-            console.print(f"[dim]Learning Database Updated:[/dim]")
+            console.print("[dim]Learning Database Updated:[/dim]")
             console.print(f"  [dim]Total Sessions: {stats['total_sessions']}[/dim]")
             console.print(f"  [dim]Success Rate: {stats['success_rate']:.1%}[/dim]")
             console.print(f"  [dim]Patterns Learned: {stats['total_patterns']}[/dim]")
@@ -1082,6 +1079,78 @@ def iterate(project_id, max_iterations):
         sys.exit(1)
 
 
+@cli.command(name='run')
+@click.option('-p', '--project', 'project_id', required=True, help='Project ID')
+@click.option(
+    '--policy',
+    type=click.Choice(['none', 'per_stage', 'on_failure', 'before_deploy']),
+    default='on_failure',
+    help='Checkpoint policy (default: on_failure)'
+)
+@click.option(
+    '--from', 'start_stage',
+    type=click.Choice(['planning', 'decomposition', 'generation', 'testing', 'review', 'deployment']),
+    default='planning',
+    help='Start from this stage'
+)
+@click.option(
+    '--to', 'end_stage',
+    type=click.Choice(['planning', 'decomposition', 'generation', 'testing', 'review', 'deployment']),
+    default='deployment',
+    help='End at this stage'
+)
+@click.option(
+    '--skip',
+    multiple=True,
+    type=click.Choice(['planning', 'decomposition', 'generation', 'testing', 'review', 'deployment']),
+    help='Skip specific stages (can be used multiple times)'
+)
+def run_pipeline(project_id: str, policy: str, start_stage: str, end_stage: str, skip: tuple):
+    """
+    Run full pipeline with checkpoint control.
+
+    Examples:
+
+        forge run -p my-api --policy on_failure
+
+        forge run -p my-api --from generation --to testing
+
+        forge run -p my-api --policy per_stage --skip deployment
+    """
+    from forge.core.master_controller import MasterController, CheckpointPolicy, Stage
+
+    try:
+        console.print("\n[bold blue]⚒ Forge Pipeline Runner[/bold blue]\n")
+
+        controller = MasterController(console=console)
+
+        skip_stages = [Stage(s) for s in skip] if skip else None
+
+        pipeline = controller.run(
+            project_id=project_id,
+            policy=CheckpointPolicy(policy),
+            start_stage=Stage(start_stage),
+            end_stage=Stage(end_stage),
+            skip_stages=skip_stages,
+        )
+
+        # Exit with appropriate code
+        if pipeline.succeeded:
+            sys.exit(0)
+        elif pipeline.aborted:
+            sys.exit(130)  # User interrupt
+        else:
+            sys.exit(1)  # Failure
+
+    except KeyboardInterrupt:
+        console.print("\n\n[yellow]Pipeline interrupted[/yellow]")
+        sys.exit(130)
+    except Exception as e:
+        print_error(f"Pipeline failed: {e}")
+        logger.exception("Pipeline error")
+        sys.exit(1)
+
+
 def main():
     """Main CLI entry point"""
     try:
@@ -1105,7 +1174,7 @@ def deploy(project_id, platform, runtime, port, region, create_pr):
     """Deploy project to platform"""
     from forge.layers.deployment import DeploymentGenerator, DeploymentConfig, Platform
     from forge.git.repository import ForgeRepository
-    from forge.git.commits import CommitStrategy, CommitType, ConventionalCommit
+    from forge.git.commits import CommitType, ConventionalCommit
     from forge.integrations.github_client import GitHubClient
     from pathlib import Path
 
@@ -1211,7 +1280,7 @@ def deploy(project_id, platform, runtime, port, region, create_pr):
                 console.print(f"\n[yellow]⚠[/yellow] Could not create PR: {e}")
 
         # Show next steps
-        console.print(f"\n[bold]Next Steps:[/bold]")
+        console.print("\n[bold]Next Steps:[/bold]")
 
         if platform == "flyio":
             console.print("  1. Install flyctl: curl -L https://fly.io/install.sh | sh")
@@ -1367,7 +1436,7 @@ def pr(project_id, title, base, draft, reviewers, labels):
         console.print(f"\n[bold]PR URL:[/bold] {pr.html_url}")
 
         # Show summary
-        console.print(f"\n[bold]Summary:[/bold]")
+        console.print("\n[bold]Summary:[/bold]")
         console.print(f"  • Title: {pr.title}")
         console.print(f"  • Branch: {pr.head} → {pr.base}")
         console.print(f"  • State: {pr.state}")
@@ -1487,7 +1556,7 @@ def example(name):
     try:
         from forge.core.orchestrator import ForgeOrchestrator
 
-        orchestrator = ForgeOrchestrator()
+        _orchestrator = ForgeOrchestrator()  # noqa: F841
 
         project_id = f"example-{name}"
 
@@ -1644,7 +1713,7 @@ def triage(project_id, session, batch, auto, list_sessions):
             console.print("[dim]Analyzing project failures...[/dim]")
 
             # Load test results from project
-            project_output_dir = Path(".forge/output") / project_id
+            _project_output_dir = Path(".forge/output") / project_id  # noqa: F841
 
             # Try to get failure suggestions from test results
             analyzer = FailureAnalyzer()
@@ -1765,7 +1834,6 @@ def worktree_create(names, base, force):
         forge worktree create my-feature --base develop
     """
     from forge.git.worktree import WorktreeManager, WorktreeError
-    from rich.table import Table
 
     try:
         manager = WorktreeManager()
@@ -1789,9 +1857,9 @@ def worktree_create(names, base, force):
 
         # Show usage hint
         if created:
-            console.print(f"\n[dim]Run commands in worktree:[/dim]")
+            console.print("\n[dim]Run commands in worktree:[/dim]")
             console.print(f"  cd {created[0].path}")
-            console.print(f"  # ... make changes ...")
+            console.print("  # ... make changes ...")
             console.print(f"  forge worktree merge {created[0].name}\n")
 
     except WorktreeError as e:
@@ -1998,7 +2066,7 @@ def worktree_merge(name, target, keep):
         if success:
             print_success(f"Merged {wt.branch} into {target}")
             if not keep:
-                console.print(f"[dim]Cleaned up worktree and branch[/dim]")
+                console.print("[dim]Cleaned up worktree and branch[/dim]")
         else:
             print_error("Merge failed - resolve conflicts manually")
             sys.exit(1)
@@ -2477,7 +2545,6 @@ def cache_stats():
     """
     from forge.core.cache import GenerationCache
     from rich.panel import Panel
-    from rich.table import Table
 
     try:
         cache_instance = GenerationCache()
@@ -2580,7 +2647,6 @@ def cache_show(key):
     """
     from forge.core.cache import GenerationCache
     from rich.panel import Panel
-    from rich.syntax import Syntax
 
     try:
         cache_instance = GenerationCache()
@@ -2795,16 +2861,16 @@ def stats(project_id):
                 console.print(f"Tasks: {len(task_plan.tasks)}")
                 console.print(f"Complexity: {task_plan.complexity.value}")
                 console.print(f"Total estimated time: {task_plan.total_estimated_time} minutes")
-            except:
+            except Exception:
                 console.print("[yellow]No task plan found[/yellow]")
 
             try:
                 test_results = state_manager.load_test_results(project_id)
-                console.print(f"\nTest Results:")
+                console.print("\nTest Results:")
                 console.print(f"  Passed: {test_results.passed_tests}")
                 console.print(f"  Failed: {test_results.failed_tests}")
                 console.print(f"  Coverage: {test_results.coverage}%")
-            except:
+            except Exception:
                 console.print("\n[yellow]No test results found[/yellow]")
 
         else:
@@ -3206,6 +3272,7 @@ def metrics_cost(hours: int):
 @metrics.command("performance")
 def metrics_performance():
     """Show performance metrics."""
+    from datetime import datetime
     from forge.core.metrics import performance_tracker, metrics_collector
     from rich.table import Table
 
@@ -3340,9 +3407,9 @@ def metrics_record(metric_name: str, value: float, metric_type: str, label: tupl
     from forge.core.metrics import metrics_collector
 
     labels = {}
-    for l in label:
-        if "=" in l:
-            k, v = l.split("=", 1)
+    for lbl in label:
+        if "=" in lbl:
+            k, v = lbl.split("=", 1)
             labels[k] = v
 
     if metric_type == "counter":
@@ -3492,7 +3559,7 @@ def review_panel_info():
 
     console.print(table)
     console.print()
-    console.print(f"[bold]Default threshold:[/bold] 8/12 approvals required")
+    console.print("[bold]Default threshold:[/bold] 8/12 approvals required")
     console.print("[bold]Blocking issues:[/bold] Critical and High severity findings")
 
 

@@ -5,22 +5,22 @@ Provides test generation, Docker-isolated execution, security scanning,
 and performance benchmarking.
 """
 
-from .generator import TestGenerator, TestType, TestableEntity, Language
-from .docker_runner import DockerTestRunner, TestFramework, TestResult
+from .generator import TestSuiteGenerator, TestCaseType, CodeEntity, Language
+from .docker_runner import DockerTestRunner, SupportedFramework, ExecutionResult
 from .security_scanner import SecurityScanner, ScanResult, Vulnerability, Severity
 from .performance import PerformanceBenchmark, BenchmarkResult, PerformanceMetrics, PerformanceThresholds
 
 __all__ = [
     # Generator
-    'TestGenerator',
-    'TestType',
-    'TestableEntity',
+    'TestSuiteGenerator',
+    'TestCaseType',
+    'CodeEntity',
     'Language',
 
     # Docker Runner
     'DockerTestRunner',
-    'TestFramework',
-    'TestResult',
+    'SupportedFramework',
+    'ExecutionResult',
 
     # Security Scanner
     'SecurityScanner',

@@ -13,7 +13,7 @@ import time
 import asyncio
 import statistics
 from pathlib import Path
-from typing import Dict, List, Optional, Callable, Any
+from typing import Dict, List, Optional, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 

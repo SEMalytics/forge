@@ -31,10 +31,7 @@ from typing import (
     Generator,
     List,
     Optional,
-    Set,
-    Tuple,
     TypeVar,
-    Union,
 )
 
 from forge.utils.logger import logger
@@ -632,7 +629,7 @@ class PerformanceTracker:
         )
 
         self.collector.increment(
-            f"operations_total",
+            "operations_total",
             labels={"type": timing.operation, "success": str(success).lower()}
         )
 
@@ -1123,7 +1120,7 @@ class MetricsAggregator:
             name=name,
             period_start=self.collector._start_time,
             period_end=datetime.now(),
-            count=stats["count"],
+            count=int(stats["count"]),
             sum_value=stats["sum"],
             mean=stats["mean"],
             min_value=stats["min"],

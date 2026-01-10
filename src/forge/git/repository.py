@@ -8,10 +8,9 @@ Provides comprehensive Git integration:
 - Push operations with safety checks
 """
 
-import os
 import subprocess
 import re
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime
@@ -153,7 +152,7 @@ class ForgeRepository:
         ahead = 0
         behind = 0
         try:
-            result = self._run_git(["rev-list", "--count", "--left-right", f"@{{u}}...HEAD"])
+            result = self._run_git(["rev-list", "--count", "--left-right", "@{u}...HEAD"])
             parts = result.stdout.strip().split("\t")
             if len(parts) == 2:
                 behind = int(parts[0])
@@ -404,8 +403,8 @@ class ForgeRepository:
                     check=False
                 )
                 files_changed = len(
-                    [l for l in files_result.stdout.split("\n")
-                     if "|" in l]
+                    [line for line in files_result.stdout.split("\n")
+                     if "|" in line]
                 )
 
                 commits.append(CommitInfo(

@@ -3,7 +3,6 @@ Structured logging for Forge
 """
 
 import logging
-import sys
 from pathlib import Path
 from typing import Optional
 from rich.logging import RichHandler

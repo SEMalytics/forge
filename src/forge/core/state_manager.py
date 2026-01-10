@@ -5,7 +5,7 @@ Project and task state management with SQLite + checkpoints
 import sqlite3
 from datetime import datetime
 from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 import json
 from pathlib import Path
 from forge.utils.logger import logger
@@ -318,7 +318,7 @@ class StateManager:
             error: Optional error message
         """
         updates = ["status = ?"]
-        params = [status]
+        params: List[Any] = [status]
 
         if generated_files is not None:
             updates.append("generated_files = ?")

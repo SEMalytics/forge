@@ -10,8 +10,7 @@ Generates targeted fixes that:
 """
 
 import os
-import asyncio
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 from pathlib import Path
 

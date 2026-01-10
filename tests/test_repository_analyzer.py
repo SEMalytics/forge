@@ -22,7 +22,7 @@ from forge.layers.repository_analyzer import (
     RepositoryContext,
     FileTypeStats,
     NamingConventions,
-    TestInfo,
+    QAInfo,
     DependencyInfo
 )
 

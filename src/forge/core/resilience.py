@@ -15,7 +15,6 @@ import hashlib
 import json
 import random
 import time
-import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
@@ -25,12 +24,10 @@ from typing import (
     Awaitable,
     Callable,
     Dict,
-    Generic,
     List,
     Optional,
     Set,
     TypeVar,
-    Union,
 )
 
 from forge.utils.logger import logger
@@ -848,7 +845,7 @@ class ResilientExecutor:
                     logger.warning(f"Non-retryable error: {classified.message}")
                     raise
 
-                if classified.category not in self.retry_config.retry_on:
+                if self.retry_config.retry_on and classified.category not in self.retry_config.retry_on:
                     logger.warning(f"Error category {classified.category} not in retry set")
                     raise
 
@@ -939,7 +936,7 @@ class ResilientExecutor:
                 if not classified.is_retryable:
                     raise
 
-                if classified.category not in self.retry_config.retry_on:
+                if self.retry_config.retry_on and classified.category not in self.retry_config.retry_on:
                     raise
 
                 delay = RetryCalculator.calculate_delay(

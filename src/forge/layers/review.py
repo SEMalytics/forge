@@ -13,16 +13,15 @@ Manages the fix-test-iterate cycle:
 
 import time
 import json
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from rich.progress import Progress, TaskID, SpinnerColumn, TextColumn, BarColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from rich.console import Console
 from rich.table import Table
-from rich.panel import Panel
 
-from forge.layers.failure_analyzer import FailureAnalyzer, FixSuggestion, Priority
+from forge.layers.failure_analyzer import FailureAnalyzer, FixSuggestion
 from forge.layers.fix_generator import FixGenerator, GeneratedFix
 from forge.layers.testing import TestingOrchestrator, TestingConfig, ComprehensiveTestReport
 from forge.layers.triage import TriageWorkflow, TriageSession
@@ -265,7 +264,7 @@ class ReviewLayer:
         start_time = time.time()
 
         # Step 1: Run tests
-        test_task = progress.add_task(f"  Running tests...", total=100)
+        test_task = progress.add_task("  Running tests...", total=100)
 
         test_report = await self.test_orchestrator.test_project(
             project_id=project_id,
@@ -289,7 +288,7 @@ class ReviewLayer:
             )
 
         # Step 2: Analyze failures
-        analysis_task = progress.add_task(f"  Analyzing failures...", total=100)
+        analysis_task = progress.add_task("  Analyzing failures...", total=100)
 
         suggestions = self.analyzer.analyze_failures(
             test_results=test_report.unit_test_result,
@@ -334,7 +333,7 @@ class ReviewLayer:
             )
 
         # Step 3: Generate fixes
-        fix_task = progress.add_task(f"  Generating fixes...", total=100)
+        fix_task = progress.add_task("  Generating fixes...", total=100)
 
         fixes = await self.fix_generator.generate_fixes(
             suggestions=suggestions,
@@ -348,7 +347,7 @@ class ReviewLayer:
         progress.update(fix_task, completed=100, description=f"  ✓ {len(fixes)} fixes generated")
 
         # Step 4: Apply fixes
-        apply_task = progress.add_task(f"  Applying fixes...", total=len(fixes) if fixes else 1)
+        apply_task = progress.add_task("  Applying fixes...", total=len(fixes) if fixes else 1)
 
         applied_fixes = []
         successful_fixes = 0

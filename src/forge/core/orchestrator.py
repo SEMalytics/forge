@@ -3,7 +3,6 @@ Main orchestration coordinator for Forge
 """
 
 from typing import Optional, Dict, Any
-from pathlib import Path
 from forge.core.config import ForgeConfig
 from forge.core.state_manager import StateManager, ProjectState
 from forge.knowledgeforge.pattern_store import PatternStore

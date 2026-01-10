@@ -12,7 +12,7 @@ Each task can run in its own isolated worktree, enabling:
 import subprocess
 import shutil
 from typing import List, Optional, Dict, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime
 
@@ -275,7 +275,7 @@ class WorktreeManager:
                 head=self._get_head(worktree_path)
             )
 
-        except WorktreeError as e:
+        except WorktreeError:
             # Clean up on failure
             if worktree_path.exists():
                 shutil.rmtree(worktree_path)
