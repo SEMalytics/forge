@@ -228,16 +228,18 @@ def doctor():
 
 @cli.command()
 @click.argument('project_name')
+@click.option('--project-id', '-i', default=None, help="Custom project ID (default: auto-generated with timestamp)")
 @click.option('--description', '-d', default="", help="Project description")
 @click.pass_context
-def init(ctx, project_name, description):
+def init(ctx, project_name, project_id, description):
     """Initialize a new Forge project"""
     orchestrator = _get_orchestrator(ctx)
 
     try:
         project = orchestrator.create_project(
             name=project_name,
-            description=description
+            description=description,
+            project_id=project_id
         )
 
         console.print()
