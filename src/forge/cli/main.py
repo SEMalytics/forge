@@ -30,11 +30,23 @@ if TYPE_CHECKING:
 
 
 def _load_env():
-    """Load environment variables from .env file (lazy)."""
+    """Load environment variables from .env files (lazy).
+
+    Loads in order (later files override earlier):
+    1. Forge package .env (global defaults)
+    2. Current directory .env (project-specific)
+    """
     from dotenv import load_dotenv
-    env_file = Path(__file__).parent.parent.parent.parent / '.env'
-    if env_file.exists():
-        load_dotenv(env_file)
+
+    # Load global forge .env first
+    forge_env = Path(__file__).parent.parent.parent.parent / '.env'
+    if forge_env.exists():
+        load_dotenv(forge_env)
+
+    # Load project-specific .env (overrides global)
+    project_env = Path.cwd() / '.env'
+    if project_env.exists():
+        load_dotenv(project_env, override=True)
 
 
 def _get_config() -> "ForgeConfig":
@@ -504,13 +516,16 @@ def analyze(repo_path, force, output_json, verbose):
 @click.option('--no-repo', is_flag=True, help="Skip auto-detection of current repository")
 @click.option('--model', '-m', type=click.Choice(['opus', 'sonnet']), default='opus',
               help="Model to use: opus (default, most capable) or sonnet (faster, cheaper)")
-def chat(project_id, repo, no_repo, model):
+@click.option('--no-guided', is_flag=True, help="Skip guided startup with suggestions")
+def chat(project_id, repo, no_repo, model, no_guided):
     """Start interactive planning session
 
-    If run inside a git repository, automatically analyzes the codebase.
+    Shows smart suggestions based on your repo's recent activity and offers
+    numbered options to quickly select a task to work on.
 
     Examples:
-        forge chat                    # Auto-analyzes current repo (uses Opus 4.5)
+        forge chat                    # Guided mode with suggestions (default)
+        forge chat --no-guided        # Skip guided startup
         forge chat -m sonnet          # Use Sonnet for faster/cheaper planning
         forge chat --repo /other/path # Analyze a specific repo
 
@@ -543,9 +558,10 @@ def chat(project_id, repo, no_repo, model):
 
         console.print("\n[bold blue]⚒ Analyzing Repository...[/bold blue]\n")
 
+        repo_path = Path(repo).resolve()
+
         try:
             analyzer = RepositoryAnalyzer()
-            repo_path = Path(repo).resolve()
 
             with console.status("[bold green]Analyzing codebase...[/bold green]"):
                 repo_context = analyzer.analyze(repo_path)
@@ -572,7 +588,7 @@ def chat(project_id, repo, no_repo, model):
 
     try:
         # Start interactive chat session with optional repo context
-        summary = simple_chat(api_key, repo_context=repo_context, model=model_name)
+        summary = simple_chat(api_key, repo_context=repo_context, model=model_name, guided=not no_guided)
 
         if summary:
             console.print("\n[green]✓[/green] Planning session completed successfully!")

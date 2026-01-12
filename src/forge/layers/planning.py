@@ -37,7 +37,7 @@ class PlanningAgent:
         self,
         api_key: str,
         model: str = "claude-opus-4-5-20251101",
-        extended_thinking: bool = True,
+        extended_thinking: bool = True,  # Enabled with anthropic SDK >= 0.40
         thinking_budget: int = 10000
     ):
         """
@@ -111,12 +111,15 @@ class PlanningAgent:
                 "messages": self.conversation_history
             }
 
-            # Add extended thinking if enabled
+            # Add extended thinking if enabled (requires temperature=1)
             if self.extended_thinking:
                 api_params["temperature"] = 1  # Required for extended thinking
-                api_params["thinking"] = {
-                    "type": "enabled",
-                    "budget_tokens": self.thinking_budget
+                # Extended thinking passed via extra_body for streaming
+                api_params["extra_body"] = {
+                    "thinking": {
+                        "type": "enabled",
+                        "budget_tokens": max(self.thinking_budget, 1024)  # Minimum 1024
+                    }
                 }
             else:
                 api_params["temperature"] = 0.7
