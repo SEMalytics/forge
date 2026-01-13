@@ -80,7 +80,7 @@ The `knowledgeforge/` directory contains 7 specification files that can be deplo
 - **Coordination patterns**: Sequential, Parallel, Hierarchical, Consensus
 - **Specification templates** for complete, implementable agent specs
 
-See [knowledgeforge/README.md](./knowledgeforge/README.md) for full documentation.
+See [knowledgeforge/README.md](./knowledgeforge/README.md) for full documentation, or browse the specs directly on [GitHub](https://github.com/SEMalytics/forge/tree/main/knowledgeforge).
 
 ## Architecture
 
