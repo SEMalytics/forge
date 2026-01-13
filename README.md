@@ -66,6 +66,22 @@ forge deploy --project my-project --platform flyio
 - **Context-aware suggestions** for best practices
 - **Continuous learning** from successes
 
+### 🧠 KnowledgeForge as Claude Project
+
+The `knowledgeforge/` directory contains 7 specification files that can be deployed as a **Claude Project** for standalone use:
+
+1. Go to [claude.ai](https://claude.ai) → Create a new Project
+2. Upload all `.md` files from `knowledgeforge/` to Project Knowledge
+3. Start chatting — Claude now operates with KnowledgeForge patterns
+
+**What you get:**
+- **PDIA method** for building AI agents (Purpose → Design → Implementation → Assessment)
+- **4 agent modes**: Navigator, Builder, Coordinator, Expert
+- **Coordination patterns**: Sequential, Parallel, Hierarchical, Consensus
+- **Specification templates** for complete, implementable agent specs
+
+See [knowledgeforge/README.md](./knowledgeforge/README.md) for full documentation.
+
 ## Architecture
 
 Forge uses a 6-layer architecture for scalable code generation:
