@@ -322,6 +322,39 @@ forge chat
 
 See [Working with Existing Projects](./docs/guides/existing-projects.md) for detailed examples.
 
+## Demo Repository
+
+Try Forge with intentionally vulnerable code samples:
+
+```bash
+git clone https://github.com/SEMalytics/forge-demo.git
+cd forge-demo
+
+# Show the 12 expert review agents
+forge review panel
+
+# Review vulnerable files (multi-agent voting)
+forge review directory demos --pattern "*.py" --format full --threshold 8
+
+# Full auto-fix loop
+forge init "Demo" -i demo -d "Vulnerable code"
+forge iterate -p demo -d demos --max-iterations 3
+```
+
+The demo includes:
+
+| File | Vulnerability | Severity |
+|------|---------------|----------|
+| `sql_injection.py` | f-string SQL query | CRITICAL |
+| `hardcoded_secrets.py` | API key in source | CRITICAL |
+| `command_injection.py` | os.system() with user input | HIGH |
+| `division.py` | No zero-division check | MEDIUM |
+| `performance.py` | O(n²) nested loops | MEDIUM |
+
+Forge's 12-agent review system (8/12 approval threshold) detects these issues, and the iterate command auto-fixes them.
+
+See [forge-demo](https://github.com/SEMalytics/forge-demo) for full documentation.
+
 ## CLI Reference
 
 ### Core Commands

@@ -1031,7 +1031,8 @@ def test(project_id, coverage, security, performance, docker):
 @cli.command()
 @click.option('--project-id', '-p', required=True, help="Project ID to iterate on")
 @click.option('--max-iterations', default=5, help="Maximum iteration attempts")
-def iterate(project_id, max_iterations):
+@click.option('--directory', '-d', type=click.Path(exists=True), help="Code directory (default: .forge/output/<project-id> or current dir)")
+def iterate(project_id, max_iterations, directory):
     """Iterate on project until tests pass"""
     import asyncio
     from forge.core.state_manager import StateManager
@@ -1052,21 +1053,33 @@ def iterate(project_id, max_iterations):
         console.print(f"[bold]Project:[/bold] {project.name}")
         console.print(f"[bold]Max Iterations:[/bold] {max_iterations}\n")
 
-        # Load code files from project output directory
-        project_output_dir = Path(".forge") / "output" / project_id
-        code_files = {}
+        # Determine code directory: --directory flag > .forge/output > current directory
+        if directory:
+            code_dir = Path(directory)
+        else:
+            code_dir = Path(".forge") / "output" / project_id
+            if not code_dir.exists() or not list(code_dir.rglob("*.py")):
+                # Fallback to current directory
+                code_dir = Path(".")
 
-        if project_output_dir.exists():
-            for file_path in project_output_dir.rglob("*.py"):
-                try:
-                    relative_path = file_path.relative_to(project_output_dir)
-                    code_files[str(relative_path)] = file_path.read_text()
-                except Exception as e:
-                    logger.warning(f"Failed to read {file_path}: {e}")
+        project_output_dir = code_dir  # For output writes
+
+        # Load code files
+        code_files = {}
+        for file_path in code_dir.rglob("*.py"):
+            # Skip __pycache__ and hidden directories
+            if "__pycache__" in str(file_path) or any(p.startswith('.') for p in file_path.parts):
+                continue
+            try:
+                relative_path = file_path.relative_to(code_dir)
+                code_files[str(relative_path)] = file_path.read_text()
+            except Exception as e:
+                logger.warning(f"Failed to read {file_path}: {e}")
 
         if not code_files:
-            print_warning("No code files found. Generate code first with 'forge build'.")
-            console.print("\nRun: forge build -p <project-id>")
+            print_warning("No code files found.")
+            console.print(f"\nSearched: {code_dir.absolute()}")
+            console.print("Use --directory to specify code location, or run 'forge build' first.")
             sys.exit(1)
 
         console.print(f"Found {len(code_files)} code files\n")

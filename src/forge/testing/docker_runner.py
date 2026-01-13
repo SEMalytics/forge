@@ -59,6 +59,19 @@ class ExecutionResult:
         """Whether all tests passed"""
         return self.failed == 0 and self.total > 0
 
+    def to_dict(self) -> Dict:
+        """Convert to JSON-serializable dictionary"""
+        return {
+            'framework': self.framework.value,  # Convert enum to string
+            'passed': self.passed,
+            'failed': self.failed,
+            'skipped': self.skipped,
+            'duration_seconds': round(self.duration_seconds, 4),
+            'coverage_percent': self.coverage_percent,
+            'output': self.output,
+            'errors': self.errors
+        }
+
 
 @dataclass
 class DockerConfig:

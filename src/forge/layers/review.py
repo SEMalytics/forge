@@ -270,7 +270,8 @@ class ReviewLayer:
             project_id=project_id,
             code_files=current_files,
             tech_stack=tech_stack,
-            project_context=project_context
+            project_context=project_context,
+            show_progress=False  # Disable nested Progress display
         )
 
         progress.update(test_task, completed=100, description="  ✓ Tests complete")

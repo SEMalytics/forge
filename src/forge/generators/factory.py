@@ -155,14 +155,25 @@ class GeneratorFactory:
         Detect the best available backend.
 
         Checks for:
-        1. CodeGen API key in environment
-        2. Claude Code CLI availability
+        1. FORGE_BACKEND environment variable (explicit override)
+        2. CodeGen API key in environment
+        3. Claude Code CLI availability
 
         Returns:
             Best available backend or None
         """
         import os
         import shutil
+
+        # Check for explicit FORGE_BACKEND override first
+        forge_backend = os.getenv('FORGE_BACKEND', '').lower()
+        if forge_backend:
+            if forge_backend in ('anthropic', 'claude', 'claude_code'):
+                logger.info(f"FORGE_BACKEND={forge_backend}, using Claude Code backend")
+                return GeneratorBackend.CLAUDE_CODE
+            elif forge_backend in ('codegen', 'codegen_api'):
+                logger.info(f"FORGE_BACKEND={forge_backend}, using CodeGen API backend")
+                return GeneratorBackend.CODEGEN_API
 
         # Check for CodeGen API key
         if os.getenv('CODEGEN_API_KEY'):

@@ -85,8 +85,8 @@ class ComprehensiveTestReport:
         """Convert to dictionary"""
         return {
             'project_id': self.project_id,
-            'unit_tests': self.unit_test_result.__dict__ if self.unit_test_result else None,
-            'integration_tests': self.integration_test_result.__dict__ if self.integration_test_result else None,
+            'unit_tests': self.unit_test_result.to_dict() if self.unit_test_result else None,
+            'integration_tests': self.integration_test_result.to_dict() if self.integration_test_result else None,
             'security': self.security_scan_result.to_dict() if self.security_scan_result else None,
             'performance': [r.to_dict() for r in self.performance_results],
             'summary': {
@@ -148,7 +148,8 @@ class TestingOrchestrator:
         project_id: str,
         code_files: Dict[str, str],
         tech_stack: Optional[List[str]] = None,
-        project_context: str = ""
+        project_context: str = "",
+        show_progress: bool = True
     ) -> ComprehensiveTestReport:
         """
         Run comprehensive testing for project.
@@ -158,6 +159,7 @@ class TestingOrchestrator:
             code_files: Dictionary mapping file paths to code content
             tech_stack: Technologies used
             project_context: Project description
+            show_progress: Whether to show progress display (disable when called from another Progress context)
 
         Returns:
             Comprehensive test report
@@ -170,12 +172,24 @@ class TestingOrchestrator:
         start_time = time.time()
         report = ComprehensiveTestReport(project_id=project_id)
 
-        with Progress(
+        # Use nullcontext when progress display should be suppressed (nested Progress contexts)
+        from contextlib import nullcontext
+
+        progress_ctx = Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             console=self.console
-        ) as progress:
+        ) if show_progress else nullcontext()
+
+        # Create a dummy progress object when disabled
+        class DummyProgress:
+            def add_task(self, *args, **kwargs): return 0
+            def update(self, *args, **kwargs): pass
+
+        with progress_ctx as progress:
+            if not show_progress:
+                progress = DummyProgress()
 
             # Phase 1: Generate Tests
             if self.config.generate_tests:
