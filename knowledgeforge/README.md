@@ -256,3 +256,22 @@ KnowledgeForge 4.0 is provided as part of the Forge project. See the main reposi
 ## Questions?
 
 If you're using KnowledgeForge and have questions about agent design patterns, coordination strategies, or specification formats, the framework itself can help — just ask it to switch to the appropriate mode (Navigator, Builder, Coordinator, or Expert).
+
+---
+
+## About SEMalytics
+
+KnowledgeForge is the methodology behind [SEMalytics](https://semalytics.com) products—multi-agent AI systems grounded in cognitive science.
+
+**Built with KnowledgeForge:**
+- **[Forge](https://github.com/SEMalytics/forge)** — AI code generation with 12-agent review
+- **[Concept Clarity](https://github.com/SEMalytics/concept-clarity)** — Message clarity measurement system
+- **Communications Optimization System (COS)** — Personality-aware B2B content analysis
+
+[Learn more at SEMalytics →](https://semalytics.com)
+
+---
+
+<p align="center">
+  <sub>Built by <a href="https://semalytics.com">SEMalytics</a> · Cognitive Science + AI + Real Business Problems</sub>
+</p>
