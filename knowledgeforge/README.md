@@ -32,9 +32,8 @@ Every interaction follows this flow. No exceptions.
 ### Option 1: Claude Projects
 
 1. Create a new Project in Claude (claude.ai)
-2. Go to **Project Knowledge**
-3. Upload all `.md` files from this directory:
-   - `00_Project_Instructions.md` (required - core system behavior)
+2. Go to **Project Instructions** and paste the contents of `00_Project_Instructions.md`
+3. Go to **Project Knowledge** and upload the remaining files:
    - `01_Navigator_Agent.md`
    - `02_Builder_Agent.md`
    - `03_Coordination_Patterns.md`

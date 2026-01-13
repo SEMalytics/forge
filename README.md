@@ -54,8 +54,9 @@ See [forge-demo](https://github.com/SEMalytics/forge-demo) for full documentatio
 The `knowledgeforge/` directory can be deployed as a standalone **Claude Project**:
 
 1. Go to [claude.ai](https://claude.ai) → Create Project
-2. Upload all `.md` files from `knowledgeforge/` to Project Knowledge
-3. Start chatting with PDIA method, 4 agent modes, and coordination patterns
+2. Paste `00_Project_Instructions.md` into **Project Instructions**
+3. Upload remaining `.md` files to **Project Knowledge**
+4. Start chatting with PDIA method, 4 agent modes, and coordination patterns
 
 See [knowledgeforge/README.md](./knowledgeforge/README.md) or browse on [GitHub](https://github.com/SEMalytics/forge/tree/main/knowledgeforge).
 
