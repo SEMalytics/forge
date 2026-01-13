@@ -109,8 +109,8 @@ Creates a new project with:
 
 **Output:**
 ```
-✓ Initialized project: Restaurant Forecasting
-• ID: restaurant-forecasting-20251207
+✓ Initialized project: Task Board API
+• ID: task-board-api-20251207
 • Stage: planning
 ```
 
@@ -161,8 +161,8 @@ Displays project information:
 ┏━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Property ┃ Value                           ┃
 ┡━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ ID       │ restaurant-forecasting-20251207 │
-│ Name     │ Restaurant Forecasting          │
+│ ID       │ task-board-api-20251207 │
+│ Name     │ Task Board API          │
 │ Stage    │ planning                        │
 │ Created  │ 2025-12-07 12:00:00            │
 └──────────┴─────────────────────────────────┘

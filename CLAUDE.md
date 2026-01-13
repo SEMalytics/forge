@@ -576,7 +576,7 @@ pattern_store:
 ```yaml
 # ./forge.yaml (project-specific)
 project:
-  name: restaurant-forecasting
+  name: task-board-api
   tech_stack:
     - python
     - fastapi

@@ -36,14 +36,14 @@ Expected output:
 
 ```bash
 # Create a new project
-poetry run forge init "Restaurant Forecasting" \
-  --description "ML system for predicting restaurant demand"
+poetry run forge init "Task Board API" \
+  --description "Kanban-style task management REST API"
 ```
 
 Output:
 ```
-✓ Initialized project: Restaurant Forecasting
-• ID: restaurant-forecasting-20251207
+✓ Initialized project: Task Board API
+• ID: task-board-api-20251207
 • Stage: planning
 ```
 
@@ -85,7 +85,7 @@ Output shows:
 
 ```bash
 # View project details
-poetry run forge status restaurant-forecasting-20251207
+poetry run forge status task-board-api-20251207
 ```
 
 Output:
@@ -93,8 +93,8 @@ Output:
 ┏━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Property ┃ Value                           ┃
 ┡━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│ ID       │ restaurant-forecasting-20251207 │
-│ Name     │ Restaurant Forecasting          │
+│ ID       │ task-board-api-20251207 │
+│ Name     │ Task Board API          │
 │ Stage    │ planning                        │
 │ Created  │ 2025-12-07 12:00:00            │
 └──────────┴─────────────────────────────────┘
