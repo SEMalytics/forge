@@ -10,17 +10,19 @@ Get up and running with Forge in 5 minutes.
 
 ## 5-Minute Quick Start
 
+> **Tip:** Run `pip install -e .` once to install the `forge` command globally. Then you can use `forge` directly instead of `forge`. See [Installation Guide](installation.md) for details.
+
 ### Step 1: Verify Installation (30 seconds)
 
 ```bash
 cd /path/to/forge
 
 # Check Forge is working
-poetry run forge --version
+forge --version
 # Output: forge, version 1.0.0
 
 # Run health check
-poetry run forge doctor
+forge doctor
 ```
 
 Expected output:
@@ -36,7 +38,7 @@ Expected output:
 
 ```bash
 # Create a new project
-poetry run forge init "Task Board API" \
+forge init "Task Board API" \
   --description "Kanban-style task management REST API"
 ```
 
@@ -57,13 +59,13 @@ Output:
 
 ```bash
 # Search for relevant patterns
-poetry run forge search "data pipeline"
+forge search "data pipeline"
 
 # More specific search
-poetry run forge search "machine learning orchestration" --max-results 5
+forge search "machine learning orchestration" --max-results 5
 
 # Try different search methods
-poetry run forge search "API design" --method semantic
+forge search "API design" --method semantic
 ```
 
 Output shows:
@@ -85,7 +87,7 @@ Output shows:
 
 ```bash
 # View project details
-poetry run forge status task-board-api-20251207
+forge status task-board-api-20251207
 ```
 
 Output:
@@ -104,7 +106,7 @@ Output:
 
 ```bash
 # Get system stats
-poetry run forge info
+forge info
 ```
 
 Output:

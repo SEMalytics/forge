@@ -134,9 +134,27 @@ This creates `forge.yaml` with default settings.
 
 ## Post-Installation
 
-### Activate Virtual Environment (Optional)
+### Install as Global CLI Command (Recommended)
 
-For easier command usage without `poetry run`:
+To use `forge` directly without typing `poetry run` every time:
+
+```bash
+pip install -e .
+```
+
+Now you can run Forge from anywhere:
+
+```bash
+forge --version
+forge doctor
+forge review panel
+```
+
+This is the recommended setup for daily use.
+
+### Alternative: Poetry Shell (Temporary)
+
+If you prefer not to install globally, use Poetry's shell:
 
 ```bash
 poetry shell
@@ -148,6 +166,8 @@ forge search "patterns"
 # Exit when done:
 exit
 ```
+
+**Note:** `poetry shell` only works in the current terminal session.
 
 ### Configure Environment Variables
 
@@ -368,10 +388,11 @@ If you encounter issues:
 After installation, verify:
 
 - [ ] `poetry --version` shows Poetry 2.2.1+
-- [ ] `poetry run forge --version` shows forge 1.0.0
-- [ ] `poetry run forge doctor` passes all checks
-- [ ] `ls patterns/*.md` shows 28 files
-- [ ] `poetry run pytest` shows 26 tests passing
+- [ ] `pip install -e .` completes successfully
+- [ ] `forge --version` shows forge 1.0.0
+- [ ] `forge doctor` passes all checks
+- [ ] `ls patterns/*.md` shows pattern files
+- [ ] `poetry run pytest` shows tests passing
 - [ ] `.forge/patterns.db` exists after running `forge doctor`
 
 Once all items are checked, you're ready to use Forge!
