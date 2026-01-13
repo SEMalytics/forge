@@ -6,522 +6,122 @@ Transform natural language descriptions into production-ready code with intellig
 
 ```bash
 # Install
+git clone https://github.com/SEMalytics/forge.git
+cd forge
 poetry install
+pip install -e .
 
-# Initialize project
+# Verify
+forge --version
+forge doctor
+
+# Build a project
 forge init my-project
-
-# Start conversational planning
 forge chat
-
-# Build from description
 forge build --project my-project
-
-# Test comprehensively
-forge test --project my-project
-
-# Iterate until tests pass
 forge iterate --project my-project
-
-# Deploy to platform
-forge deploy --project my-project --platform flyio
 ```
+
+See [Installation Guide](./docs/guides/installation.md) for detailed setup.
 
 ## Features
 
-### 🎯 Intelligent Planning
-- **Conversational interface** for requirements gathering
-- **Automatic task decomposition** with dependency tracking
-- **Smart tech stack selection** based on requirements
-- **Complexity estimation** for accurate planning
-
-### 🏗️ Distributed Generation
-- **Multi-agent code generation** with Claude/GPT-4
-- **Parallel execution** for faster builds
-- **Pattern-based generation** using KnowledgeForge
-- **Consistent code quality** across modules
-
-### 🧪 Comprehensive Testing
-- **Automated test generation** for all code
-- **Multi-framework support** (pytest, jest, go test)
-- **Security scanning** for vulnerabilities
-- **Performance benchmarking** with thresholds
-- **Docker-based isolation** for reproducibility
-
-### 🔄 Iterative Refinement
-- **Automatic failure analysis** with root cause detection
-- **AI-powered fix generation** using patterns
-- **Progressive iteration** until tests pass
-- **Learning database** for continuous improvement
-
-### 🚀 Git Integration
-- **Conventional commits** with auto-generation
-- **Branch management** with forge/* naming
-- **PR creation** with comprehensive checklists
-- **Multi-platform deployment** (fly.io, Vercel, AWS, Docker, K8s)
-
-### 📚 Knowledge Management
-- **Pattern library** with 40+ engineering patterns
-- **Semantic search** for relevant patterns
-- **Context-aware suggestions** for best practices
-- **Continuous learning** from successes
-
-### 🧠 KnowledgeForge as Claude Project
-
-The `knowledgeforge/` directory contains 7 specification files that can be deployed as a **Claude Project** for standalone use:
-
-1. Go to [claude.ai](https://claude.ai) → Create a new Project
-2. Upload all `.md` files from `knowledgeforge/` to Project Knowledge
-3. Start chatting — Claude now operates with KnowledgeForge patterns
-
-**What you get:**
-- **PDIA method** for building AI agents (Purpose → Design → Implementation → Assessment)
-- **4 agent modes**: Navigator, Builder, Coordinator, Expert
-- **Coordination patterns**: Sequential, Parallel, Hierarchical, Consensus
-- **Specification templates** for complete, implementable agent specs
-
-See [knowledgeforge/README.md](./knowledgeforge/README.md) for full documentation, or browse the specs directly on [GitHub](https://github.com/SEMalytics/forge/tree/main/knowledgeforge).
-
-## Architecture
-
-Forge uses a 6-layer architecture for scalable code generation:
-
-```
-┌─────────────────────────────────────────────────┐
-│  1. Decomposition Layer                         │
-│     Task planning, dependency analysis          │
-└─────────────────────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────────┐
-│  2. Planning Layer                               │
-│     Tech stack selection, file structure        │
-└─────────────────────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────────┐
-│  3. Generation Layer                             │
-│     Distributed code generation                 │
-└─────────────────────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────────┐
-│  4. Testing Layer                                │
-│     Unit, integration, security, performance    │
-└─────────────────────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────────┐
-│  5. Review Layer                                 │
-│     Iterative refinement, fix generation        │
-└─────────────────────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────────┐
-│  6. Deployment Layer                             │
-│     Git workflows, PR creation, deployment      │
-└─────────────────────────────────────────────────┘
-```
-
-See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed design.
-
-## Installation
-
-### Requirements
-
-- Python 3.11 or 3.12 (NOT 3.13+, as dependencies don't support it yet)
-- Docker (for testing)
-- Git
-- API Keys:
-  - `ANTHROPIC_API_KEY` for Claude (primary)
-  - `OPENAI_API_KEY` for GPT-4 (optional)
-  - `GITHUB_TOKEN` for PR creation (optional)
-
-### Quick Start
-
-```bash
-# Clone repository
-git clone https://github.com/SEMalytics/forge.git
-cd forge
-
-# Install with Poetry (use Python 3.11 or 3.12)
-poetry env use python3.11  # If you have Python 3.13+
-poetry install
-
-# Install as CLI command (so you can type 'forge' anywhere)
-pip install -e .
-
-# Verify installation
-forge --version
-forge doctor
-```
-
-### Optional: Compound Engineering Plugin
-
-For enhanced Claude Code integration, install the CE plugin:
-
-```bash
-# From inside the forge directory
-git clone https://github.com/EveryInc/compound-engineering-plugin.git compound-engineering
-
-# Verify
-forge doctor
-# Should show: ✓ Compound Engineering plugin (for Claude Code integration)
-```
-
-**Note**: The CE plugin is optional. Forge has built-in CE-style planning and works perfectly without it. The plugin adds advanced Claude Code workflow features when you're working in Claude Code.
-
-## Usage
-
-### 1. Initialize Project
-
-```bash
-forge init my-awesome-api
-
-# Output:
-# ✓ Created project structure
-# ✓ Initialized state manager
-# ✓ Ready for planning
-```
-
-### 2. Interactive Planning
-
-```bash
-forge chat
-
-# Conversational interface:
-# > What would you like to build?
-# A REST API for managing tasks with PostgreSQL
-#
-# > What features do you need?
-# - CRUD operations for tasks
-# - User authentication with JWT
-# - Task filtering and search
-# - Due date reminders
-#
-# ✓ Generated 12 tasks
-# ✓ Estimated complexity: Medium (8-12 hours)
-# ✓ Recommended stack: FastAPI, PostgreSQL, SQLAlchemy
-```
-
-### 3. Build Project
-
-```bash
-forge build --project my-awesome-api
-
-# Output:
-# [1/12] Generating database models... ✓
-# [2/12] Generating API endpoints... ✓
-# [3/12] Generating authentication... ✓
-# ...
-# [12/12] Generating tests... ✓
-#
-# ✓ Generated 24 files
-# ✓ Build completed in 3m 42s
-```
-
-### 4. Run Tests
-
-```bash
-forge test --project my-awesome-api
-
-# Output:
-# Running unit tests... ✓ 18 passed
-# Running integration tests... ✓ 8 passed
-# Running security scan... ✓ No vulnerabilities
-# Running performance tests... ✓ All benchmarks passed
-#
-# ✓ All tests passed (26/26)
-```
-
-### 5. Iterate Until Passing
-
-```bash
-forge iterate --project my-awesome-api --max-iterations 5
-
-# Output:
-# Iteration 1/5
-#   Running tests... ✗ 3 failed
-#   Analyzing failures... ✓ 3 issues identified
-#   Generating fixes... ✓ 3 fixes generated
-#   Applying fixes... ✓ 3 fixes applied
-#
-# Iteration 2/5
-#   Running tests... ✓ All tests passing!
-#
-# ✓ Success in 2 iterations
-```
-
-### 6. Deploy
-
-```bash
-forge deploy --project my-awesome-api --platform flyio --create-pr
-
-# Output:
-# ✓ Generated fly.toml
-# ✓ Generated Dockerfile
-# ✓ Created branch: forge/deploy-flyio-20250107
-# ✓ Created commit
-# ✓ Pushed to remote
-# ✓ Created PR #42: https://github.com/owner/repo/pull/42
-#
-# Next Steps:
-#   1. Install flyctl: curl -L https://fly.io/install.sh | sh
-#   2. Create app: fly apps create my-awesome-api
-#   3. Deploy: fly deploy
-```
-
-## Examples
-
-### Building from Scratch
-
-View all examples:
-```bash
-forge examples
-```
-
-Build an example:
-```bash
-# Simple API
-forge example simple-api
-
-# ML Pipeline
-forge example ml-pipeline
-
-# Full Stack App
-forge example full-stack-app
-```
-
-### Working with Existing Projects
-
-Forge can improve, refactor, or add features to existing codebases:
-
-```bash
-# Clone an existing project
-git clone https://github.com/yourorg/existing-project.git
-cd existing-project
-
-# Start interactive improvement session
-forge chat
-
-# Example conversation:
-# > What would you like to do with this project?
-# Add user authentication with JWT
-#
-# > I'll analyze the existing codebase and plan the authentication feature...
-# Found: Express.js API with 15 endpoints
-# Recommended: Add passport-jwt middleware
-# Tasks: 5 (database schema, auth routes, middleware, tests, docs)
-#
-# > Should I proceed with implementation?
-# yes
-```
-
-**Common use cases:**
-
-```bash
-# Add a new feature
-forge chat
-> "Add rate limiting to all API endpoints"
-
-# Refactor code
-forge chat
-> "Refactor database queries to use connection pooling"
-
-# Improve performance
-forge chat
-> "Add caching layer with Redis"
-
-# Update dependencies
-forge chat
-> "Migrate from Express 4 to Express 5"
-
-# Add tests
-forge chat
-> "Add integration tests for all API endpoints"
-```
-
-See [Working with Existing Projects](./docs/guides/existing-projects.md) for detailed examples.
-
-## Demo Repository
-
-Try Forge with intentionally vulnerable code samples:
+- **12-Agent Review System** — Security, performance, architecture experts vote on code (8/12 approval threshold)
+- **Automated Iteration** — Detects issues, generates fixes, loops until tests pass
+- **Multi-Framework Testing** — pytest, jest, go test with Docker isolation
+- **Pattern-Based Generation** — 40+ engineering patterns via KnowledgeForge
+- **Git Integration** — Conventional commits, branch management, PR creation
+- **Multi-Platform Deploy** — fly.io, Vercel, AWS, Docker, Kubernetes
+
+## Demo
+
+Try Forge with intentionally vulnerable code:
 
 ```bash
 git clone https://github.com/SEMalytics/forge-demo.git
 cd forge-demo
 
-# Show the 12 expert review agents
-forge review panel
-
-# Review vulnerable files (multi-agent voting)
-forge review directory demos --pattern "*.py" --format full --threshold 8
-
-# Full auto-fix loop
-forge init "Demo" -i demo -d "Vulnerable code"
-forge iterate -p demo -d demos --max-iterations 3
+forge review panel                    # Show 12 expert agents
+forge review directory demos          # Detect vulnerabilities
+forge init "Demo" -i demo -d "Demo"
+forge iterate -p demo -d demos        # Auto-fix loop
 ```
-
-The demo includes:
-
-| File | Vulnerability | Severity |
-|------|---------------|----------|
-| `sql_injection.py` | f-string SQL query | CRITICAL |
-| `hardcoded_secrets.py` | API key in source | CRITICAL |
-| `command_injection.py` | os.system() with user input | HIGH |
-| `division.py` | No zero-division check | MEDIUM |
-| `performance.py` | O(n²) nested loops | MEDIUM |
-
-Forge's 12-agent review system (8/12 approval threshold) detects these issues, and the iterate command auto-fixes them.
 
 See [forge-demo](https://github.com/SEMalytics/forge-demo) for full documentation.
 
-## CLI Reference
+## KnowledgeForge as Claude Project
 
-### Core Commands
+The `knowledgeforge/` directory can be deployed as a standalone **Claude Project**:
 
-```bash
-forge init <project>              # Initialize new project
-forge chat                         # Interactive planning
-forge decompose <description>      # Generate task plan
-forge build --project <id>         # Build project
-forge test --project <id>          # Run tests
-forge iterate --project <id>       # Iterate until passing
-```
+1. Go to [claude.ai](https://claude.ai) → Create Project
+2. Upload all `.md` files from `knowledgeforge/` to Project Knowledge
+3. Start chatting with PDIA method, 4 agent modes, and coordination patterns
 
-### Git Commands
+See [knowledgeforge/README.md](./knowledgeforge/README.md) or browse on [GitHub](https://github.com/SEMalytics/forge/tree/main/knowledgeforge).
 
-```bash
-forge pr --project <id>            # Create pull request
-forge deploy --platform <name>     # Generate deployment config
-```
+## Documentation
 
-### Utility Commands
+**Getting Started:**
+- [Installation](./docs/guides/installation.md) — Setup and requirements
+- [Quick Start](./docs/guides/quickstart.md) — Get running in 5 minutes
+- [CLI Reference](./docs/guides/cli-reference.md) — All commands
+- [Configuration](./docs/guides/configuration.md) — Config options
 
-```bash
-forge status --project <id>        # Show project status
-forge info                         # System information
-forge doctor                       # Check dependencies
-forge search <query>               # Search patterns
-forge examples                     # List examples
-forge explain <concept>            # Explain concept
-forge stats --project <id>         # Show statistics
-```
+**Guides:**
+- [Existing Projects](./docs/guides/existing-projects.md) — Add Forge to existing codebases
+- [Using CodeGen](./docs/guides/using-codegen.md) — CodeGen API integration
+- [Troubleshooting](./docs/guides/troubleshooting.md) — Common issues
 
-See [API_REFERENCE.md](./docs/API_REFERENCE.md) for complete documentation.
+**Architecture & API:**
+- [Architecture](./docs/ARCHITECTURE.md) — System design (6-layer pipeline)
+- [API Reference](./docs/API_REFERENCE.md) — Python API
+- [Failure Analysis](./docs/FAILURE_ANALYSIS_SYSTEM.md) — How auto-fix works
+- [Git Workflows](./docs/GIT_WORKFLOWS.md) — Git integration
 
-## Configuration
+**Development:**
+- [Developer Guide](./docs/guides/developer-guide.md) — Contributing
+- [Development Notes](./docs/DEVELOPMENT_NOTES.md) — Internal docs
 
-### Project Configuration
+See [docs/README.md](./docs/README.md) for complete index.
 
-`.forge/config.yaml`:
-```yaml
-project:
-  name: my-api
-  description: Task management API
-
-generator:
-  provider: anthropic  # or openai
-  model: claude-sonnet-4-20250514
-  max_tokens: 4096
-
-testing:
-  run_security: true
-  run_performance: true
-  timeout: 300
-
-deployment:
-  platform: flyio
-  region: lax
-```
-
-## Development
-
-### Setup
+## CLI Commands
 
 ```bash
-# Install dependencies
-poetry install
+# Core workflow
+forge init <project>           # Initialize project
+forge chat                     # Interactive planning
+forge build -p <id>            # Generate code
+forge test -p <id>             # Run tests
+forge iterate -p <id>          # Auto-fix loop
 
-# Install pre-commit hooks
-pre-commit install
+# Review
+forge review panel             # Show 12 agents
+forge review file <path>       # Review single file
+forge review directory <dir>   # Review directory
 
-# Run tests
-poetry run pytest
+# Utilities
+forge status                   # Project status
+forge doctor                   # Check dependencies
+forge deploy -p <id>           # Generate deploy config
 ```
 
-### Running Tests
+## Requirements
 
-```bash
-# All tests
-poetry run pytest
-
-# With coverage
-poetry run pytest --cov=forge --cov-report=html
-
-# Specific module
-poetry run pytest tests/test_git_workflows.py
-```
-
-### Code Quality
-
-```bash
-# Format code
-poetry run black src/
-
-# Sort imports
-poetry run isort src/
-
-# Type checking
-poetry run mypy src/
-
-# Linting
-poetry run ruff src/
-```
-
-## Troubleshooting
-
-See [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) for common issues and solutions.
-
-Quick fixes:
-
-```bash
-# API key not found
-export ANTHROPIC_API_KEY=your_key_here
-
-# Docker connection failed
-# macOS: Open Docker Desktop
-# Linux: sudo systemctl start docker
-
-# Pattern files included in repository at ./patterns/
-# Verify with: ls patterns/
-```
-
-## Performance
-
-Forge is optimized for speed:
-
-- **Pattern search**: <200ms (with caching)
-- **Task decomposition**: <5s for 20 tasks
-- **Code generation**: ~2min/1000 LOC (parallel)
-- **Test execution**: Variable (Docker startup + tests)
-- **Memory usage**: <500MB typical
-
-## Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md).
+- Python 3.11 or 3.12 (not 3.13+)
+- Docker (optional, for isolated testing)
+- `ANTHROPIC_API_KEY` environment variable
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) for details.
+MIT — See [LICENSE](./LICENSE)
 
-## Support
+## Links
 
-- **Documentation**: [docs/](./docs/)
-- **Patterns**: [patterns/](./patterns/)
-- **Issues**: [GitHub Issues](https://github.com/SEMalytics/forge/issues)
-
-## Acknowledgments
-
-- Built with [Claude](https://anthropic.com) by Anthropic
-- Powered by [Poetry](https://python-poetry.org/)
-- Developed by [SEMalytics](https://github.com/SEMalytics)
+- [Documentation](./docs/)
+- [Demo Repository](https://github.com/SEMalytics/forge-demo)
+- [KnowledgeForge Specs](./knowledgeforge/)
+- [GitHub Issues](https://github.com/SEMalytics/forge/issues)
 
 ---
 
-**Built with ❤️ by the Forge team**
+Built with [Claude](https://anthropic.com) by [SEMalytics](https://github.com/SEMalytics)

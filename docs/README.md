@@ -2,95 +2,61 @@
 
 Complete documentation for the Forge AI Development Orchestration System.
 
-## 📚 Documentation Index
+## Getting Started
 
-### Getting Started
-- [Installation Guide](guides/installation.md) - Set up Forge on your system
-- [Quick Start](guides/quickstart.md) - Get up and running in 5 minutes
-- [Tutorial](guides/tutorial.md) - Step-by-step walkthrough
+| Guide | Description |
+|-------|-------------|
+| [Installation](guides/installation.md) | Setup Forge on your system |
+| [Quick Start](guides/quickstart.md) | Get running in 5 minutes |
+| [CLI Reference](guides/cli-reference.md) | All command-line commands |
+| [Configuration](guides/configuration.md) | Configure Forge for your needs |
 
-### User Guides
-- [User Guide](guides/user-guide.md) - Complete user documentation
-- [CLI Reference](guides/cli-reference.md) - All command-line commands
-- [Configuration](guides/configuration.md) - Configure Forge for your needs
-- [Pattern Search](guides/pattern-search.md) - Master pattern searching
+## User Guides
 
-### API Documentation
-- [API Overview](api/overview.md) - Programming interface overview
-- [Core API](api/core.md) - Core modules (config, orchestrator, state)
-- [KnowledgeForge API](api/knowledgeforge.md) - Pattern store and search
-- [CLI API](api/cli.md) - CLI components
-- [Python Examples](api/examples.md) - Code examples
+| Guide | Description |
+|-------|-------------|
+| [Existing Projects](guides/existing-projects.md) | Add Forge to existing codebases |
+| [Using CodeGen](guides/using-codegen.md) | CodeGen API integration |
+| [Troubleshooting](guides/troubleshooting.md) | Common issues and solutions |
 
-### Architecture
-- [System Architecture](architecture/overview.md) - High-level design
-- [Pattern Store Design](architecture/pattern-store.md) - Hybrid search system
-- [State Management](architecture/state-management.md) - State and checkpoints
-- [Database Schema](architecture/database-schema.md) - SQLite schemas
+## Architecture & API
 
-### Advanced Topics
-- [Troubleshooting](guides/troubleshooting.md) - Common issues and solutions
-- [Developer Guide](guides/developer-guide.md) - Contributing to Forge
-- [Testing Guide](guides/testing.md) - Running and writing tests
-- [Performance Tuning](guides/performance.md) - Optimization tips
+| Document | Description |
+|----------|-------------|
+| [Architecture](ARCHITECTURE.md) | System design and 6-layer pipeline |
+| [API Reference](API_REFERENCE.md) | Programmatic Python API |
+| [Programmatic API](PROGRAMMATIC_API.md) | Advanced API usage |
+| [Failure Analysis](FAILURE_ANALYSIS_SYSTEM.md) | How auto-fix works |
+| [Git Workflows](GIT_WORKFLOWS.md) | Git integration details |
 
-## 🎯 Quick Links
+## Development
 
-### For New Users
-Start here:
-1. [Installation Guide](guides/installation.md)
+| Guide | Description |
+|-------|-------------|
+| [Developer Guide](guides/developer-guide.md) | Contributing to Forge |
+| [Development Notes](DEVELOPMENT_NOTES.md) | Internal development docs |
+| [CodeGen Setup](CODEGEN_SETUP.md) | Setting up CodeGen API |
+| [Repository Setup](REPOSITORY_SETUP_SOLUTION.md) | Repository configuration |
+
+## Quick Links
+
+**New Users:**
+1. [Installation](guides/installation.md)
 2. [Quick Start](guides/quickstart.md)
-3. [Tutorial](guides/tutorial.md)
+3. [CLI Reference](guides/cli-reference.md)
 
-### For Developers
+**Developers:**
 1. [Developer Guide](guides/developer-guide.md)
-2. [API Overview](api/overview.md)
-3. [Architecture Overview](architecture/overview.md)
+2. [Architecture](ARCHITECTURE.md)
+3. [API Reference](API_REFERENCE.md)
 
-### Common Tasks
-- [Creating a project](guides/user-guide.md#creating-projects)
-- [Searching patterns](guides/pattern-search.md)
-- [Configuration](guides/configuration.md)
-- [Troubleshooting](guides/troubleshooting.md)
+## Getting Help
 
-## 📖 Documentation Conventions
+1. Check [Troubleshooting](guides/troubleshooting.md)
+2. Run `forge doctor` to check your system
+3. Review [API Reference](API_REFERENCE.md)
+4. Open an issue on [GitHub](https://github.com/SEMalytics/forge/issues)
 
-### Code Examples
+---
 
-Shell commands:
-```bash
-forge doctor
-```
-
-Python code:
-```python
-from forge.core.orchestrator import Orchestrator
-```
-
-### Symbols
-
-- ✅ Completed feature
-- ⚠️  Warning or important note
-- 💡 Tip or best practice
-- 🚧 Work in progress
-
-## 🆘 Getting Help
-
-1. Check the [Troubleshooting Guide](guides/troubleshooting.md)
-2. Review [API Documentation](api/overview.md)
-3. Run `forge doctor` to check your system
-4. Check the test suite: `pytest -v`
-
-## 📝 Contributing
-
-See [Developer Guide](guides/developer-guide.md) for information on:
-- Setting up development environment
-- Code style and standards
-- Testing requirements
-- Submitting contributions
-
-## 🔄 Documentation Updates
-
-This documentation is for Forge version 1.0.0.
-
-Last updated: December 7, 2024
+Last updated: January 2025
