@@ -2,6 +2,7 @@
 Iterative refinement controller
 
 Manages the fix-test-iterate cycle:
+- Run adversarial critique on initial code (KF 7.26)
 - Run tests
 - Analyze failures
 - Generate fixes
@@ -19,8 +20,10 @@ from pathlib import Path
 
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 
+from forge.layers.critic import MultiLLMCritic, CritiqueResult, CriticError
 from forge.layers.failure_analyzer import FailureAnalyzer, FixSuggestion
 from forge.layers.fix_generator import FixGenerator, GeneratedFix
 from forge.layers.testing import TestingOrchestrator, TestingConfig, ComprehensiveTestReport
@@ -58,6 +61,7 @@ class ReviewSummary:
     iterations: List[IterationResult]
     total_duration_seconds: float
     learning_database_updated: bool = False
+    critique_result: Optional[CritiqueResult] = None
 
     @property
     def success(self) -> bool:
@@ -73,6 +77,9 @@ class ReviewSummary:
             'success': self.success,
             'total_duration_seconds': round(self.total_duration_seconds, 2),
             'learning_database_updated': self.learning_database_updated,
+            'adversarial_critique': (
+                self.critique_result.to_dict() if self.critique_result else None
+            ),
             'iterations': [
                 {
                     'iteration': it.iteration_number,
@@ -105,7 +112,9 @@ class ReviewLayer:
         testing_config: Optional[TestingConfig] = None,
         console: Optional[Console] = None,
         state_manager: Optional[StateManager] = None,
-        learning_db_path: Optional[Path] = None
+        learning_db_path: Optional[Path] = None,
+        enable_adversarial_critic: bool = True,
+        critic: Optional[MultiLLMCritic] = None,
     ):
         """
         Initialize review layer.
@@ -115,12 +124,25 @@ class ReviewLayer:
             console: Rich console for output
             state_manager: State manager for persistence
             learning_db_path: Path to learning database
+            enable_adversarial_critic: Run KF 7.26 adversarial critique before tests
+            critic: Pre-built MultiLLMCritic instance (for testing / DI)
         """
         self.testing_config = testing_config or TestingConfig()
         self.console = console or Console()
         self.state_manager = state_manager or StateManager()
         self.learning_db_path = learning_db_path or Path(".forge/learning/fixes.json")
         self.learning_db_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # KF 7.26 adversarial critic (runs before tests on initial code)
+        self._critic: Optional[MultiLLMCritic] = None
+        if enable_adversarial_critic:
+            if critic is not None:
+                self._critic = critic
+            else:
+                try:
+                    self._critic = MultiLLMCritic()
+                except CriticError as exc:
+                    logger.warning(f"Adversarial critic disabled: {exc}")
 
         # Initialize components
         self.analyzer = FailureAnalyzer()
@@ -131,7 +153,10 @@ class ReviewLayer:
         )
         self.triage_workflow = TriageWorkflow(console=self.console)
 
-        logger.info("Initialized ReviewLayer")
+        logger.info(
+            "Initialized ReviewLayer "
+            f"(adversarial_critic={'enabled' if self._critic else 'disabled'})"
+        )
 
     async def iterate_until_passing(
         self,
@@ -179,6 +204,13 @@ class ReviewLayer:
         current_files = code_files.copy()
         self._write_files(current_files, output_dir)
 
+        # KF 7.26: adversarial critique on initial code before any tests run
+        critique_result: Optional[CritiqueResult] = None
+        if self._critic is not None:
+            critique_result = await self._run_adversarial_critique(
+                current_files, project_context
+            )
+
         # Track iterations
         iterations: List[IterationResult] = []
 
@@ -223,7 +255,8 @@ class ReviewLayer:
                         total_iterations=iteration_num,
                         final_status='passed',
                         iterations=iterations,
-                        total_duration_seconds=time.time() - start_time
+                        total_duration_seconds=time.time() - start_time,
+                        critique_result=critique_result,
                     )
 
                     # Update learning database
@@ -243,10 +276,60 @@ class ReviewLayer:
             total_iterations=max_iterations,
             final_status='max_iterations',
             iterations=iterations,
-            total_duration_seconds=time.time() - start_time
+            total_duration_seconds=time.time() - start_time,
+            critique_result=critique_result,
         )
 
         return summary
+
+    async def _run_adversarial_critique(
+        self,
+        code_files: Dict[str, str],
+        project_context: str = "",
+    ) -> Optional[CritiqueResult]:
+        """
+        Run KF 7.26 adversarial critique across all available LLMs.
+
+        Assembles all code files into a single content block, runs the
+        multi-model adversarial critic, displays the report, and returns
+        the result.  Never raises — failures are logged and return None.
+        """
+        if self._critic is None:
+            return None
+
+        content_parts = [
+            f"# File: {path}\n{body}"
+            for path, body in sorted(code_files.items())
+        ]
+        content = "\n\n".join(content_parts)
+
+        self.console.print(
+            "\n[bold magenta]⚔  Adversarial Critic (KF 7.26)[/bold magenta]"
+        )
+
+        try:
+            result = await self._critic.critique(content, context=project_context)
+            self._display_critique_report(result)
+            return result
+        except Exception as exc:
+            logger.warning(f"Adversarial critique failed (non-fatal): {exc}")
+            self.console.print(
+                f"[dim]Adversarial critique skipped: {exc}[/dim]"
+            )
+            return None
+
+    def _display_critique_report(self, result: CritiqueResult) -> None:
+        """Render the critic report to the console."""
+        report_text = result.format_report()
+
+        if result.confirmed_count > 0:
+            border = "red"
+        elif result.findings:
+            border = "yellow"
+        else:
+            border = "green"
+
+        self.console.print(Panel(report_text, border_style=border))
 
     async def _run_iteration(
         self,
