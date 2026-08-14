@@ -583,8 +583,8 @@ def chat(project_id, repo, no_repo, model, no_guided):
 
     # Map model choice to full model name
     model_map = {
-        'opus': 'claude-opus-4-5-20251101',
-        'sonnet': 'claude-sonnet-4-20250514'
+        'opus': 'claude-opus-4-7',
+        'sonnet': 'claude-sonnet-4-6'
     }
     model_name = model_map.get(model, model_map['opus'])
 
@@ -860,7 +860,7 @@ def build(project_id, backend, parallel, max_parallel, resume, force):
             backend_enum = GeneratorFactory.detect_best_backend()
             if not backend_enum:
                 print_error("No generator backend available")
-                console.print("\nSet CODEGEN_API_KEY or install Claude CLI")
+                console.print("\nInstall Claude Code CLI (claude.ai/download) or set FORGE_BACKEND=codegen_api with CODEGEN_API_KEY")
                 sys.exit(1)
 
         console.print(f"[bold]Backend:[/bold] {backend_enum.value}\n")

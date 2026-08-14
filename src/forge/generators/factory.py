@@ -175,15 +175,16 @@ class GeneratorFactory:
                 logger.info(f"FORGE_BACKEND={forge_backend}, using CodeGen API backend")
                 return GeneratorBackend.CODEGEN_API
 
-        # Check for CodeGen API key
-        if os.getenv('CODEGEN_API_KEY'):
-            logger.info("Detected CodeGen API key, using CodeGen API backend")
-            return GeneratorBackend.CODEGEN_API
-
-        # Check for Claude Code CLI
+        # Prefer Claude Code CLI — works without external service credentials.
+        # Set FORGE_BACKEND=codegen_api to opt into the Codegen backend explicitly.
         if shutil.which('claude'):
             logger.info("Detected Claude CLI, using Claude Code backend")
             return GeneratorBackend.CLAUDE_CODE
+
+        # Codegen API as fallback when Claude CLI is unavailable
+        if os.getenv('CODEGEN_API_KEY'):
+            logger.info("Detected CodeGen API key, using CodeGen API backend")
+            return GeneratorBackend.CODEGEN_API
 
         logger.warning("No generator backend detected")
         return None

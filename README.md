@@ -126,22 +126,3 @@ MIT — See [LICENSE](./LICENSE)
 ---
 
 Built with [Claude](https://anthropic.com) by [SEMalytics](https://github.com/SEMalytics)
-
----
-
-## About SEMalytics
-
-Forge is built by [SEMalytics](https://semalytics.com)—applying cognitive science and AI orchestration to real development problems.
-
-**Related Projects:**
-- **[KnowledgeForge](knowledgeforge/)** — The multi-agent methodology powering Forge's 12-agent review system
-- **[Concept Clarity](https://github.com/SEMalytics/concept-clarity)** — Measure message clarity across communications
-- **Communications Optimization System (COS)** — Personality-aware B2B content analysis
-
-[Learn more at SEMalytics →](https://semalytics.com)
-
----
-
-<p align="center">
-  <sub>Built by <a href="https://semalytics.com">SEMalytics</a> · AI that ships.</sub>
-</p>

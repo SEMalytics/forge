@@ -717,13 +717,20 @@ class CostTracker:
     Supports multiple models with configurable pricing.
     """
 
-    # Default pricing per 1M tokens (as of 2024)
+    # Default pricing per 1M tokens
     DEFAULT_PRICING = {
+        # Claude 4 (current)
+        "claude-opus-4-7": {"input": 15.0, "output": 75.0},
+        "claude-sonnet-4-6": {"input": 3.0, "output": 15.0},
+        "claude-haiku-4-5": {"input": 0.80, "output": 4.0},
+        # Claude 4 (legacy naming)
+        "claude-opus-4": {"input": 15.0, "output": 75.0},
+        # Claude 3 (legacy)
         "claude-3-opus": {"input": 15.0, "output": 75.0},
         "claude-3-sonnet": {"input": 3.0, "output": 15.0},
         "claude-3-haiku": {"input": 0.25, "output": 1.25},
         "claude-3.5-sonnet": {"input": 3.0, "output": 15.0},
-        "claude-opus-4": {"input": 15.0, "output": 75.0},
+        # OpenAI
         "gpt-4": {"input": 30.0, "output": 60.0},
         "gpt-4-turbo": {"input": 10.0, "output": 30.0},
         "gpt-3.5-turbo": {"input": 0.5, "output": 1.5},
@@ -774,9 +781,8 @@ class CostTracker:
             cached_tokens=cached_tokens
         )
 
-        # Get pricing (default to claude-3-sonnet if unknown)
         model_key = self._normalize_model_name(model)
-        prices = self.pricing.get(model_key, self.pricing.get("claude-3-sonnet", {"input": 3.0, "output": 15.0}))
+        prices = self.pricing.get(model_key, self.pricing.get("claude-sonnet-4-6", {"input": 3.0, "output": 15.0}))
 
         # Calculate costs (per 1M tokens, cached tokens at 10% cost)
         effective_input = input_tokens - cached_tokens * 0.9
@@ -811,14 +817,19 @@ class CostTracker:
         """Normalize model name for pricing lookup."""
         model_lower = model.lower()
 
-        # Map common variations
-        if "opus" in model_lower:
-            if "4" in model_lower:
-                return "claude-opus-4"
+        # Claude 4 models use claude-{type}-{major} naming (type before version)
+        if model_lower.startswith("claude-opus-4"):
+            return "claude-opus-4-7"
+        elif model_lower.startswith("claude-sonnet-4"):
+            return "claude-sonnet-4-6"
+        elif model_lower.startswith("claude-haiku-4"):
+            return "claude-haiku-4-5"
+        # Claude 3 models use claude-{major}-{type} naming (version before type)
+        elif "opus" in model_lower:
             return "claude-3-opus"
+        elif "3.5" in model_lower or "3-5" in model_lower:
+            return "claude-3.5-sonnet"
         elif "sonnet" in model_lower:
-            if "3.5" in model_lower or "3-5" in model_lower:
-                return "claude-3.5-sonnet"
             return "claude-3-sonnet"
         elif "haiku" in model_lower:
             return "claude-3-haiku"

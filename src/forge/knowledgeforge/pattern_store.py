@@ -124,7 +124,7 @@ class PatternStore:
 
         logger.info(f"Indexing patterns from {self.patterns_dir}...")
 
-        pattern_files = list(self.patterns_dir.glob("*.md"))
+        pattern_files = list(self.patterns_dir.glob("**/*.md"))
         if not pattern_files:
             logger.warning(f"No .md files found in {self.patterns_dir}")
             return

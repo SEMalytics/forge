@@ -1,0 +1,7 @@
+#!/bin/sh
+# ox post-commit hook
+# appends HEAD SHA to active recording's ProducedCommits index
+if command -v ox >/dev/null 2>&1; then
+  ox hooks post-commit 2>/dev/null || true
+fi
+# end ox hook

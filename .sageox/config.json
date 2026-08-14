@@ -1,0 +1,12 @@
+{
+  "config_version": "2",
+  "repo_id": "repo_01a0019a-e2df-70d2-9846-7b3d9eb21e9a",
+  "repo_remote_hashes": [
+    "sha256:5f1cc0015853a9d773084d812f541f8e5f0ecbff947c3915fd38daed968af6af",
+    "sha256:b3be777cda70f35b351a370b5c701eead41fbe6a0c97d6192d956ce758ba25f2"
+  ],
+  "team_id": "team_d0a8v2wrg4",
+  "team_name": "David's Private Team",
+  "endpoint": "https://sageox.ai",
+  "update_frequency_hours": 24
+}

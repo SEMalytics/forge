@@ -1351,7 +1351,7 @@ async def chat_session(
 
     try:
         # Determine model name
-        model_name = model if model else "claude-opus-4-5-20251101"
+        model_name = model if model else "claude-opus-4-7"
 
         # Initialize planning agent with specified model
         agent = PlanningAgent(api_key, model=model_name)

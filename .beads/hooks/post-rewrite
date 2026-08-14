@@ -1,0 +1,7 @@
+#!/bin/sh
+# ox post-rewrite hook
+# rewrites SHAs in active recording's ProducedCommits on amend/rebase
+if command -v ox >/dev/null 2>&1; then
+  ox hooks post-rewrite --mode "${1:-}" 2>/dev/null || true
+fi
+# end ox hook

@@ -1,0 +1,33 @@
+{
+  "repo_id": "repo_01a0019a-e2df-70d2-9846-7b3d9eb21e9a",
+  "type": "git",
+  "init_at": "2026-08-14T18:48:43Z",
+  "init_by_email": "github@internexio.com",
+  "init_by_name": "David Pedersen",
+  "repo_salt": "34a790ee236dbe9ac8264841c17d975a058af13a",
+  "endpoint": "https://sageox.ai",
+  "fingerprint": {
+    "first_commit": "34a790ee236dbe9ac8264841c17d975a058af13a",
+    "monthly_checkpoints": {
+      "2025-12": "34a790ee236dbe9ac8264841c17d975a058af13a",
+      "2026-01": "9e23a29dac78c2ca55fd3fccf56f7d699ab67657"
+    },
+    "ancestry_samples": [
+      "34a790ee236dbe9ac8264841c17d975a058af13a",
+      "f5ac53a9f1f6818e12618a183cd1595df7a42783",
+      "0fb36361e493287471c1dc80d1aceb5104345e38",
+      "0f5946f1a64d0495fb5a2ce948ff821d52926ca9",
+      "0fa893c479e009d73086b87ea3bdc83cd5fc4981"
+    ],
+    "remote_hashes": [
+      "sha256:5f1cc0015853a9d773084d812f541f8e5f0ecbff947c3915fd38daed968af6af",
+      "sha256:b3be777cda70f35b351a370b5c701eead41fbe6a0c97d6192d956ce758ba25f2"
+    ]
+  },
+  "team_urls": {
+    "David's Private Team": "https://git.sageox.ai/sageox-team_d0a8v2wrg4/team-context.git"
+  },
+  "urls_cached_at": "2026-08-14T18:48:46Z",
+  "version": "0.12.0",
+  "updated_at": "2026-08-14T18:48:46Z"
+}

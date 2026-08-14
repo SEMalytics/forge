@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "forge",
+  "project_id": "0dd69ef7-b573-4c5d-b2e5-e17e25fe7454"
+}

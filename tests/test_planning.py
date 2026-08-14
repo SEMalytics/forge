@@ -29,7 +29,7 @@ def test_planning_agent_initialization(mock_api_key):
     with patch('forge.layers.planning.Anthropic') as mock_anthropic:
         agent = PlanningAgent(mock_api_key)
 
-        assert agent.model == "claude-sonnet-4-20250514"
+        assert agent.model == "claude-opus-4-7"
         assert agent.conversation_history == []
         assert "started_at" in agent.session_metadata
         assert agent.session_metadata["turns"] == 0
@@ -131,7 +131,7 @@ def test_load_conversation(planning_agent, tmp_path):
     # Create conversation file
     conversation_data = {
         "session_metadata": {"started_at": "2024-01-01", "turns": 3},
-        "model": "claude-sonnet-4-20250514",
+        "model": "claude-sonnet-4-6",
         "conversation": [
             {"role": "user", "content": "Test"},
             {"role": "assistant", "content": "Response"}
